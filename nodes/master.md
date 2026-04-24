@@ -43,7 +43,7 @@ Responsabilità **esclusivamente infrastrutturali**:
 ### Connettività
 
 | Interfaccia | Uso |
-|---|---|
+| --- | --- |
 | Wi-Fi (ESP-Mesh root) | Gestione rete mesh — root fissa |
 | UART (header pin) | Debug seriale, flash firmware |
 | GPIO LED RGB | Stato sistema (opzionale ma consigliato) |
@@ -224,6 +224,7 @@ L'HMI può essere alimentato a batteria o tramite USB/12V. Non è necessario che
 - Permette l'invio di comandi manuali ai nodi funzione
 
 ogni secondo (timer task):
+
 ### 2. Visualizzazione stato e alert
 
 Riceve e mostra lo stato dei nodi e gli alert inoltrati dal ROOT. Non prende decisioni autonome.
@@ -321,7 +322,7 @@ L'utente può inviare comandi manuali ai nodi funzione tramite l'interfaccia HMI
 ## Task FreeRTOS
 
 | Task | Core | Priorità | Stack | Funzione |
-|---|---|---|---|---|
+| --- | --- | --- | --- | --- |
 | `mesh_rx_task` | 0 | 5 | 4 KB | Ricezione messaggi mesh, dispatch alla coda interna |
 | `mesh_tx_task` | 0 | 5 | 4 KB | Invio comandi **manuali** utente, gestione ACK e retry |
 | `heartbeat_monitor_task` | 0 | 4 | 2 KB | Controllo last\_seen, aggiornamento stati nodi |
