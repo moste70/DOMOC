@@ -45,6 +45,53 @@ Caratteristiche chiave:
 - **Indicatore batteria**: lettura ADC sul pin VBAT diviso per 2 — percentuale visualizzata in header display
 - **Protezione sottotensione**: spegnimento automatico sotto 3.2V per preservare la batteria
 
+#### Moduli di ricarica e protezione batteria
+
+**Opzione 1: TP4056 + DW01** (soluzione separata, consigliata per flessibilità)
+- **TP4056**: modulo di ricarica LiPo completo a 1A (~€2-3)
+  - Ingresso: 5V USB-C o 12V da buck converter
+  - Protezione da sovraccarica, scarica rapida sicura
+  - LED stato ricarica
+  
+- **DW01-A**: protezione batteria (sottotensione + sovracorrente) (~€1-2)
+  - Spegne automaticamente sotto 2.4V
+  - Protegge da corto circuito
+
+*Pro*: Moduli testate, economiche, standard nel DIY  
+*Contro*: Due componenti separate da gestire
+
+**Opzione 2: BQ24079** (soluzione integrata, moderna)
+- IC unico con gestione completa:
+  - Ricarica LiPo da 5V/12V
+  - Protezione integrata
+  - Massima semplicità PCB
+  - I2C opzionale per monitor remoto
+
+*Pro*: Un solo componente, minore footprint, migliore integrazione  
+*Contro*: Leggermente più costoso (€5-8)
+
+**Opzione 3: TP4056 + MB8365** (alternativa con separazione input)
+- Se vuoi ricaricare da **entrambe le fonti** (12V camper + USB-C esterno) contemporaneamente:
+  - **TP4056** con **MB8365** (diodo OR-ing)
+  - Seleziona automaticamente la fonte di potenza migliore
+
+*Pro*: Massima flessibilità di alimentazione  
+*Contro*: Più componenti e complessità
+
+**Configurazione consigliata per DOMOC HMI**:
+```
+Buck 12V→5V 1A + USB-C 5V
+        │
+        └──→ [TP4056] ──→ [DW01] ──→ [Batteria LiPo 3.7V]
+                                           │
+                                           └→ [Boost/LDO 3.7→3.3V] → ESP32-S3
+```
+
+**Alternativa all-in-one**: DFRobot BQ24075 Charging Module
+- Include TP4056 + protezione DW01 + step-up per 3.3V
+- PCB compatta con tutte le capacità necessarie (~€8-10)
+- Riferimento circuito e discussione TI: https://e2e.ti.com/support/power-management-group/power-management/f/power-management-forum/707357/bq24075-input-voltage-drops-by-500mv-when-battery-is-inserted
+
 ### Display
 
 - **Dimensioni**: 3.5"–4.3" (480×320 o 800×480)
