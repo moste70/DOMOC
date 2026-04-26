@@ -16,7 +16,6 @@ Non è necessaria l'inversione di polarità: un solo relay o MOSFET controlla l'
 - **ESP32-C3**
 - **Relay o MOSFET** per commutazione alimentazione 12V
 - **Elettrovalvola 12V NC** (normalmente chiusa)
-- **Finecorsa** (opzionale, per rilevamento posizione aperta/chiusa)
 
 ## Logica di controllo
 
@@ -96,8 +95,9 @@ Quando il segnale KEY_ON (positivo sotto chiave) è attivo, i comandi di apertur
 
 ## Sicurezza
 
-- Timeout hardware: la valvola torna chiusa dopo N secondi senza alimentazione
-- Stato di sicurezza: senza alimentazione la valvola è sempre chiusa
+- **Timeout software**: se il comando rimane attivo per più di N secondi (es. 10s), il firmware disattiva automaticamente il relay
+- **Stato di sicurezza**: senza alimentazione la valvola torna sempre chiusa (normalmente chiusa - NC)
+- **Protezione chiave accensione**: quando KEY_ON è attivo, i comandi di apertura vengono bloccati (prevenzione apertura indesiderata durante marcia)
 
 ---
 

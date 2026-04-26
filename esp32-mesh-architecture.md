@@ -18,21 +18,17 @@ Il sistema adotta una **separazione netta tra infrastruttura mesh e interfaccia 
 
 | ID | Nome nodo | Tipo | Funzione |
 |---|---|---|---|
-| `0x0001` | **MASTER** | Master + Display | Pannello di controllo centrale, visualizzazione stato, comandi utente |
-| `0x0002` | **STEP** | Sensore + Attuatore | Apertura e chiusura del gradino di accesso + rilevamento stato (aperto/chiuso) |
-| `0x0003` | **GREY_WATER** | Attuatore | Apertura e chiusura valvola acque grigie (scarico, **inversione polarità** come STEP) |
-| `0x0004` | **FRESH_WATER** | Attuatore | Apertura e chiusura valvola acque chiare (carico, **NC: si apre solo se alimentata**) |
-| `0x0005` | **THERMO_BUNK** | Sensore + Attuatore | Termostato e comando valvola aria calda letto a castello |
-| `0x0006` | **THERMO_LOFT** | Sensore + Attuatore | Termostato e comando valvola aria calda mansarda |
-| `0x0007` | **THERMO_KITCHEN** | Sensore + Attuatore | Termostato e comando valvola aria calda zona cucina |
-| `0x0008` | **REAR_CAM** | Sensore video | Telecamera retromarcia |
-| `0x0009` | **FRONT_DOOR** | Attuatore | Apertura e chiusura porta ingresso |
-| `0x000A` | **CAM_EXT** | Sensore video (multi) | Telecamere esterne di sicurezza (fronte, lato, retro) |
-| `0x000B` | **BATT_ENGINE** | Sensore | Monitoraggio tensione batteria motore (12V starter) |
-| `0x000C` | **BATT_SERVICE** | Sensore | Monitoraggio tensione batteria servizio (AGM/LiFePO4) |
-| `0x000D` | **ENV_EXT** | Sensore | Temperatura e umidità esterna (sonda esterna IP65) |
-| `0x000E` | **KEY_ON** | Sensore | Rilevamento positivo sotto chiave (contatto accensione veicolo) |
-| `0x000F` | **HMI** | Interfaccia utente portatile | Display touch + batteria — monitoraggio e controllo manuale, connessione mesh opzionale |
+| `0x0001` | **ROOT** | Infrastruttura | Root fisso mesh + registry persistente + sensori critici (chiave, batteria motore) |
+| `0x0002` | **STEP** | Sensore + Attuatore | Gradino motorizzato + rilevamento stato + sensore temperatura esterna |
+| `0x0003` | **GARAGE (GREY_WATER)** | Sensore + Attuatore | Valvola acque grigie bipolare + monitoraggio batteria di servizio (critico) |
+| `0x0004` | **FRESH_WATER** | Attuatore | Valvola acque chiare normalmente chiusa (NC) |
+| `0x0005` | **THERMO_BUNK** | Sensore + Attuatore | Termostato letto + comando valvola aria calda |
+| `0x0006` | **THERMO_LOFT** | Sensore + Attuatore | Termostato mansarda + comando valvola aria calda |
+| `0x0007` | **THERMO_KITCHEN** | Sensore + Attuatore | Termostato cucina + comando valvola aria calda |
+| `0x0008` | **REAR_CAM** | Sensore video | Telecamera retromarcia stream MJPEG |
+| `0x0009` | **FRONT_DOOR** | Attuatore | Porta ingresso motorizzata + finecorsa |
+| `0x000A` | **CAM_EXT** | Sensore video | Telecamere esterne (fronte/lato/retro) + motion detection |
+| `0x000B` | **HMI** | Interfaccia utente | Display touch 3.5-4.3" + batteria LiPo — monitoraggio e controllo manuale |
 
 ### Note architetturali specifiche per il camper
 
@@ -41,12 +37,13 @@ Il sistema adotta una **separazione netta tra infrastruttura mesh e interfaccia 
 - **Telecamera retromarcia** (`REAR_CAM`): è un caso speciale. Il video non transita sulla mesh ESP-Mesh (troppa banda). Il nodo ESP32-CAM eroga uno **stream MJPEG via HTTP** su Wi-Fi diretto; il master si connette allo stream solo quando richiesto (es. retromarcia inserita). Il nodo comunica sulla mesh solo per segnalare stato e trigger.
 - **Telecamere esterne di sicurezza** (`CAM_EXT`): ogni camera esterna (fronte, lato dx/sx, retro) è un ESP32-CAM indipendente che eroga stream MJPEG HTTP. Un nodo coordinatore `CAM_EXT` gestisce il rilevamento movimento (tramite analisi frame lato firmware) e invia alert sulla mesh al master. Il master può richiedere lo switch tra stream via comando mesh. Considerare alimentazione con cavo dedicato e custodie IP65 per l'esterno.
 - **Sicurezza attuatori**: gradino (`STEP`) e porta (`FRONT_DOOR`) devono implementare un **safe state fisico** (finecorsa hardware) indipendente dal firmware, per evitare danni in caso di blocco software.
-- **Gradino** (`STEP`): il nodo integra un **sensore di posizione** (microswitch o sensore reed magnetico) per rilevare lo stato fisico reale del gradino (completamente chiuso / aperto). Lo stato viene pubblicato sulla mesh in modo che altri nodi (es. `KEY_ON`) possano reagire. Il finecorsa di chiusura è indispensabile per fermare automaticamente il motore del gradino al raggiungimento della posizione.
-- **Positivo sotto chiave** (`KEY_ON`): legge il segnale +12V dal contatto di accensione del veicolo tramite un optoisolatore (es. PC817) per proteggere l'ESP32 da transitori. Quando il segnale passa da OFF→ON o ON→OFF, il nodo invia immediatamente un `MSG_ALERT` broadcast sulla mesh. Gli altri nodi che devono reagire alla chiave (es. `STEP`, `GREY_WATER`) si sottoscrivono a questo evento e applicano la propria logica di sicurezza.
-- **Valvola acque grigie** (`GREY_WATER`): elettrovalvola bipolare comandata tramite **inversione di polarità** (H-bridge), come il gradino. Timeout hardware di sicurezza: se il nodo perde la mesh, la valvola torna chiusa dopo N secondi (configurabile via NVS).
-- **Valvola acque chiare** (`FRESH_WATER`): elettrovalvola **normalmente chiusa (NC)**, si apre solo se alimentata (relay/MOSFET). In assenza di alimentazione torna chiusa automaticamente (stato di sicurezza). Anche qui timeout hardware di sicurezza.
-- **Monitoraggio batterie** (`BATT_ENGINE`, `BATT_SERVICE`): usare un partitore resistivo (es. 100kΩ/27kΩ) per scalare il range 0–16V all'ingresso ADC 0–3.3V dell'ESP32. Preferire il chip **INA219** (I2C) per misure più precise di tensione e corrente. Il nodo `BATT_SERVICE` è il sensore più critico: invia alert al master sotto 11.8V (warning) e 11.5V (critico). Il nodo `BATT_ENGINE` monitora la tensione starter e segnala se il motore è acceso (>13.5V = alternatore in carica).
-- **Sensore ambientale esterno** (`ENV_EXT`): usare **SHT31** (I2C, precisione ±0.3°C / ±2% RH) in custodia con membrana Gore-Tex per protezione da pioggia senza condensa. Posizionare in zona ombreggiata per evitare irraggiamento diretto.
+- **ROOT (nodo base/infrastruttura)**: 
+  - Rilevamento **chiave accensione**: legge il segnale +12V dal contatto di accensione del veicolo tramite optoisolatore (PC817). Quando il segnale passa da OFF→ON o ON→OFF, invia immediatamente `MSG_ALERT` broadcast sulla mesh.
+  - Monitoraggio **batteria motore (12V starter)**: tensione tramite partitore ADC (100kΩ/27kΩ). Segnala accensione motore (>13.5V = alternatore in carica).
+- **STEP (gradino)**: controllo motorizzato + rilevamento finecorsa. **Integra sensore SHT31 I2C** (temperatura ±0.3°C / umidità ±2% RH) in custodia Gore-Tex per misure ambientali esterne. Pubblica letture ogni 60s sulla mesh.
+- **GARAGE (GREY_WATER - valvola acque grigie)**: controllo valvola bipolare tramite **H-bridge DRV8833** (inversione polarità). **Monitora criticamente batteria di servizio**: AGM/LiFePO4 via partitore ADC (100kΩ/27kΩ) o INA219 (consigliato). Invia alert sotto 11.8V (warning) e 11.5V (critico — blocco comandi).
+- **Valvola acque chiare** (`FRESH_WATER`): elettrovalvola **normalmente chiusa (NC)**, si apre solo se alimentata (relay/MOSFET). Torna chiusa automaticamente in assenza di alimentazione.
+- **Timeout di sicurezza hardware**: valvole e motori si fermano automaticamente dopo N secondi senza conferma mesh (configurabile via NVS).
 
 ### Strategia energetica per nodo — vincolo camper a batteria
 
@@ -54,13 +51,13 @@ Il sistema adotta una **separazione netta tra infrastruttura mesh e interfaccia 
 
 | Nodo | Strategia energetica | Consumo target idle |
 |---|---|---|
-| **ROOT** | Always-on, nessun display; modem sleep abilitato | < 20 mA |
+| **ROOT** | Always-on, nessun display; modem sleep abilitato; sensore chiave interrupt-driven | < 20 mA |
 | **HMI** | Batteria LiPo + alimentazione 12V opzionale; display off dopo 60s; light sleep quando non usato | < 5 mA sleep, ~180 mA attivo |
-| **STEP** | Light sleep tra i comandi; attuatore alimentato solo durante il movimento | < 5 mA idle |
-| **GREY_WATER** | Light sleep; elettrovalvola normalmente chiusa (NC) — non consuma se chiusa | < 5 mA idle |
-| **FRESH_WATER** | Light sleep; elettrovalvola NC — non consuma se chiusa | < 5 mA idle |
-| **THERMO_BUNK/LOFT/KITCHEN** | Light sleep; sensore temperatura letto ogni 30s; valvola aperta solo se necessario | < 10 mA idle |
-| **REAR_CAM** | Spento di default; attivato solo quando retromarcia inserita (segnale GPIO da veicolo) | 0 mA spento |
+| **STEP** | Light sleep tra i comandi; attuatore alimentato solo durante il movimento; SHT31 ogni 60s | < 8 mA idle |
+| **GARAGE (GREY_WATER)** | Light sleep; valvola NC — non consuma se chiusa; monitor batteria ogni 30s (critico) | < 10 mA idle |
+| **FRESH_WATER** | Light sleep; valvola NC — non consuma se chiusa | < 5 mA idle |
+| **THERMO_BUNK/LOFT/KITCHEN** | Light sleep; sensore temperatura ogni 30s; valvola aperta solo se necessario | < 10 mA idle |
+| **REAR_CAM** | Spento di default; attivato solo quando retromarcia inserita | 0 mA spento |
 | **CAM_EXT** | Modalità motion detection a basso consumo; stream attivo solo su richiesta | < 30 mA standby |
 | **FRONT_DOOR** | Light sleep; attuatore alimentato solo durante apertura/chiusura | < 5 mA idle |
 | **KEY_ON** | Interrupt-driven (wakeup da GPIO su fronte di salita/discesa); idle quasi zero | < 1 mA idle |
@@ -143,6 +140,24 @@ Si adotta una **topologia mesh ibrida a grafo aciclico diretto (DAG)** con strut
 - **Discovery**: automatico tramite ESP-Mesh (scan periodico degli AP mesh vicini, selezione del parent basata su RSSI + numero di hop)
 - **Routing**: ESP-Mesh costruisce internamente una routing table basata sul MAC address di ogni nodo
 - **Root election**: il nodo ROOT deve essere impostato come root fisso (`esp_mesh_fix_root(true)`) — l'HMI non partecipa mai alla root election (configurato come nodo normale)
+
+### BOM Componenti critici — H-Bridge per attuatori
+
+I seguenti nodi utilizzano motori o valvole bipolari controllate da **H-bridge DRV8833** (Texas Instruments):
+
+| Nodo | Carico | Driver | Datasheet |
+|---|---|---|---|
+| **STEP** | Motore gradino bidirezionale | DRV8833 ×1 | [TI DRV8833](https://www.ti.com/lit/ds/symlink/drv8833.pdf) |
+| **GARAGE (GREY_WATER)** | Valvola acque grigie bipolare | DRV8833 ×1 | [TI DRV8833](https://www.ti.com/lit/ds/symlink/drv8833.pdf) |
+| **FRONT_DOOR** | Motore porta bidirezionale | DRV8833 ×1 | [TI DRV8833](https://www.ti.com/lit/ds/symlink/drv8833.pdf) |
+| **Totale sistema** | — | **3× DRV8833** | — |
+
+**Specifiche DRV8833**:
+- 2 canali H-bridge indipendenti per chip
+- Corrente: 2A continua, 3.5A picco per canale
+- Protezione termica integrata (shutdown a 160°C)
+- Package: QFN 16-pin (5×5 mm)
+- Costo: ~€2-3 per chip
 
 ---
 

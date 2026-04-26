@@ -15,17 +15,36 @@ La posizione della valvola può essere rilevata tramite finecorsa o sensore di c
 ## Hardware
 
 - **ESP32-C3**
-- **Driver H-bridge** (L298N, IBT-2, o simili)
+- **Driver H-bridge DRV8833** (Texas Instruments) — 2A per canale, protezione termica integrata — [Datasheet](https://www.ti.com/lit/ds/symlink/drv8833.pdf)
 - **Elettrovalvola 12V** (bipolare, inversione polarità)
-- **Relay di potenza** per taglio alimentazione in standby
-- **Partitore resistivo** o **sensore INA219** per la lettura della tensione della batteria di servizio
+- **Partitore ADC o INA219** per monitoraggio batteria di servizio
+
+### Sensore batteria di servizio (CRITICO)
+
+**Posizionamento fisico**: il nodo GARAGE è posizionato vicino alla batteria di servizio (AGM/LiFePO4).
+
+**Lettura tensione**:
+- **Opzione 1 (economica)**: Partitore resistivo 100kΩ / 27kΩ per scalare 0–16V → 0–3.3V ADC ESP32
+- **Opzione 2 (precisa)**: **INA219** (I2C) per tensione + corrente simultanea — consigliato per precisione
+
+**Soglie di allarme**:
+- **Normale**: > 13.2V (batteria carica)
+- **Warning**: 11.8V — invia MSG_ALERT al ROOT
+- **Critico**: 11.5V — invia MSG_ALERT critico, blocca comandi apertura valvole, spegnimento controllato
+- **Lettura**: ogni 30s in idle, ogni 5s se tensione < 12.0V
+
+**Logica di sicurezza**: se la tensione della batteria scende sotto 11.5V, il nodo GARAGE blocca qualsiasi comando di apertura valvola e notifica immediatamente il ROOT per azioni di emergenza (chiusura attuatori, spegnimento carichi non essenziali).
 
 ## Logica di controllo
 
 - Comandi di apertura/chiusura ricevuti via mesh (`MSG_COMMAND`)
-- Timeout di sicurezza: se la valvola non raggiunge la posizione entro N secondi, va in errore
+- **Timeout di sicurezza**: se la valvola non cambia stato entro **N secondi** (es. 3-5s), il firmware disattiva l'H-bridge e segnala errore
+- Il timeout protegge da:
+  - Motore/attuatore bloccato (meccanico)
+  - Comando non completato per guasto hardware
+  - Firmware crash durante il movimento
 - In assenza di mesh, può essere comandata localmente (pulsante fisico opzionale)
-- Dopo ogni movimento, alimentazione rimossa (relay OFF)
+- Dopo ogni movimento, H-bridge disattivato (standby 0mA)
 
 ## Logica autonoma — Macchina a stati
 
