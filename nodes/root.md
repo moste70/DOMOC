@@ -26,6 +26,19 @@ Responsabilità **esclusivamente infrastrutturali**:
   - Wi-Fi 802.11 b/g/n sufficiente per ESP-Mesh root
   - Nessun display necessario — single-core 160 MHz è abbondante
 
+### Sensori integrati
+
+1. **Rilevamento chiave accensione** — optoisolatore PC817
+   - Ingresso: +12V dal contatto di accensione veicolo (tramite resistenza serie 10kΩ)
+   - Output: GPIO interrupt, rilevamento fronte ON/OFF
+   - Protezione: optoisolatore isola il 12V dal microcontrollore
+
+2. **Monitor batteria motore (12V starter)**
+   - Partitore ADC: 100kΩ / 27kΩ per scalare 0–16V → 0–3.3V ESP32
+   - GPIO ADC dedicato
+   - Lettura ogni 60s, alert se > 13.5V (motore acceso/alternatore carica)
+   - Datasheet INA219 (I2C, opzionale): per misura di corrente più precisa
+
 ### Alimentazione
 
 ```
@@ -49,6 +62,8 @@ Responsabilità **esclusivamente infrastrutturali**:
 
 | GPIO | Funzione |
 |---|---|
+| GPIO1 | Interrupt chiave accensione (dal PC817 optoisolatore) |
+| GPIO2 | ADC batteria motore (VBATT_ENGINE / partitore) |
 | GPIO18 | LED stato verde (mesh ok) |
 | GPIO19 | LED stato rosso (errore / boot) |
 | GPIO20/21 | UART TX/RX (debug) |
