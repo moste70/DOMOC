@@ -4,7 +4,7 @@
 
 ## Descrizione
 
-Il nodo `FRESH_WATER` controlla l'elettrovalvola di carico delle acque chiare del camper. Utilizza una **elettrovalvola normalmente chiusa (NC)**: 
+Il nodo `FRESH_WATER` controlla l'elettrovalvola di carico delle acque chiare del camper. Utilizza una **elettrovalvola normalmente chiusa (NC)**:
 
 - **Se alimentata (12V ON)**: la valvola si apre
 - **Se non alimentata (12V OFF)**: la valvola si chiude automaticamente (stato di sicurezza)
@@ -26,7 +26,7 @@ Non è necessaria l'inversione di polarità: un solo relay o MOSFET controlla l'
 
 ## Logica autonoma — Macchina a stati
 
-```
+```text
                     ┌─────────────────────────────────────────┐
                     │                                         │
          BOOT       │  comando APRI        comando CHIUDI      │
@@ -137,15 +137,16 @@ typedef struct __attribute__((packed)) {
 ```c
 static const node_descriptor_t FRESH_WATER_DESCRIPTOR = {
     .node_icon      = ICON_VALVE_FRESH,
-    .action_count   = 3,
+    .action_count   = 2,
     .property_count = 1,
     .actions = {
-        { ACTION_OPEN,       ICON_ACT_OPEN,  "APRI"   },
-        { ACTION_CLOSE,      ICON_ACT_CLOSE, "CHIUDI" },
-        { ACTION_GET_STATUS, ICON_ACT_INFO,  "INFO"   },
+        // action_code    icon_id         ctrl_type     group_id  linked_property  flags              label
+        { ACTION_OPEN,   ICON_ACT_OPEN,  CTRL_BUTTON,  0,        0,               FLAG_KEY_BLOCKED,  "APRI"   },
+        { ACTION_CLOSE,  ICON_ACT_CLOSE, CTRL_BUTTON,  0,        0,               FLAG_KEY_BLOCKED,  "CHIUDI" },
     },
     .properties = {
-        { PROP_STATE, 0, PAYLOAD_UINT8, "", "%s" },
+        // property_id  offset  type            widget_type    range_min  range_max  unit  fmt
+        { PROP_STATE,   0,      PAYLOAD_UINT8,  WIDGET_LABEL,  0,         0,         "",   "%s" },
     },
 };
 ```

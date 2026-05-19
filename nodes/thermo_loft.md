@@ -99,15 +99,17 @@ static const node_descriptor_t THERMO_LOFT_DESCRIPTOR = {
     .action_count   = 4,
     .property_count = 3,
     .actions = {
-        { ACTION_TEMP_UP,  ICON_ACT_TEMP_UP, "TEMP +"  },
-        { ACTION_TEMP_DN,  ICON_ACT_TEMP_DN, "TEMP -"  },
-        { ACTION_CAM_ON,   ICON_ACT_CAM_ON,  "CAM ON"  },
-        { ACTION_CAM_OFF,  ICON_ACT_CAM_OFF, "CAM OFF" },
+        // action_code       icon_id            ctrl_type      group_id  linked_property  flags  label
+        { ACTION_TEMP_UP,   ICON_ACT_TEMP_UP,  CTRL_STEPPER,  1,        PROP_SETPOINT,   0,     "TEMP +" },
+        { ACTION_TEMP_DN,   ICON_ACT_TEMP_DN,  CTRL_STEPPER,  1,        PROP_SETPOINT,   0,     "TEMP -" },
+        { ACTION_CAM_ON,    ICON_ACT_CAM_ON,   CTRL_TOGGLE,   2,        PROP_CAM_ON,     0,     "CAM"    },
+        { ACTION_CAM_OFF,   ICON_ACT_CAM_OFF,  CTRL_TOGGLE,   2,        PROP_CAM_ON,     0,     "CAM-"   },
     },
     .properties = {
-        { PROP_TEMPERATURE, 0, PAYLOAD_FLOAT32, "°C", "%.1f" },
-        { PROP_SETPOINT,    4, PAYLOAD_FLOAT32, "°C", "%.1f" },
-        { PROP_VALVE_ON,    8, PAYLOAD_UINT8,   "",   "%s"   },
+        // property_id      offset  type             widget_type          range_min  range_max  unit   fmt
+        { PROP_TEMPERATURE, 0,      PAYLOAD_FLOAT32, WIDGET_THERMOMETER,  150,       300,       "°C",  "%.1f" },
+        { PROP_SETPOINT,    4,      PAYLOAD_FLOAT32, WIDGET_GAUGE,        150,       300,       "°C",  "%.1f" },
+        { PROP_VALVE_ON,    8,      PAYLOAD_UINT8,   WIDGET_INDICATOR,    0,         0,         "",    "%s"   },
     },
 };
 ```

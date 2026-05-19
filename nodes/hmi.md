@@ -235,7 +235,199 @@ void ui_detail_refresh(uint16_t node_id) {
 }
 ```
 
-### 4. Ricezione alert
+### 4. Discovery state machine
+
+La procedura di discovery è la sequenza formale che l'HMI esegue all'accensione per costruire l'intera UI da zero senza conoscere i tipi di nodo in anticipo.
+
+```text
+[BOOT] ──▶ [MESH_CONNECTING] ──▶ [REGISTERING] ──▶ [REQUESTING_DUMP]
+                                                             │
+                                                             ▼
+                                                  [RECEIVING_REGISTRY]
+                                                             │
+                                                  ricevuti tutti i node_info_t
+                                                             │
+                                                             ▼
+                                                  [RECEIVING_DESCRIPTORS]
+                                                             │
+                                                  descriptor_valid==true
+                                                  per tutti i nodi (o timeout 3s)
+                                                             │
+                                                             ▼
+                                                  [BUILDING_UI]
+                                                             │
+                                                  build_property_widget()
+                                                  build_action_controls()
+                                                  per ogni nodo
+                                                             │
+                                                             ▼
+                                                        [ONLINE]
+                                                             │
+                                            nuovo MSG_DESCRIPTOR ─────▶ torna a BUILDING_UI
+                                            (nodo aggiunto live)         per quel nodo
+```
+
+| Stato | Azione |
+| --- | --- |
+| `MESH_CONNECTING` | ESP-Mesh init, display mostra spinner "Connessione..." |
+| `REGISTERING` | Invia `MSG_REGISTER` al ROOT (`node_type=HMI`), attende `MSG_REGISTER_ACK` |
+| `REQUESTING_DUMP` | Invia `MSG_STATUS_REQ` broadcast |
+| `RECEIVING_REGISTRY` | Riceve `MSG_REGISTRY_DUMP` con array `node_info_t[]`; conta nodi attesi |
+| `RECEIVING_DESCRIPTORS` | Per ogni nodo atteso, aspetta `MSG_DESCRIPTOR`; timeout 3s per nodo → `descriptor_valid=false` (icona generica) |
+| `BUILDING_UI` | Itera registry; per ogni nodo chiama `build_node_ui()`; al termine mostra carosello |
+| `ONLINE` | Operazione normale; nuovi `MSG_DESCRIPTOR` aggiornano il carosello in tempo reale senza reboot |
+
+### 5. Costruzione widget proprietà — `build_property_widget()`
+
+```c
+lv_obj_t* build_property_widget(property_descriptor_t *pd, lv_obj_t *parent) {
+    switch (pd->widget_type) {
+
+    case WIDGET_GAUGE:
+        // lv_arc con range [range_min/10 .. range_max/10]
+        lv_obj_t *arc = lv_arc_create(parent);
+        lv_arc_set_range(arc, pd->range_min, pd->range_max);  // valori ×10
+        lv_arc_set_mode(arc, LV_ARC_MODE_SYMMETRICAL);
+        return arc;
+
+    case WIDGET_THERMOMETER:
+        // arco + label valore sovrapposta — widget composito
+        return create_thermometer_widget(parent,
+            pd->range_min / 10.0f, pd->range_max / 10.0f);
+
+    case WIDGET_PROGRESS:
+        lv_obj_t *bar = lv_bar_create(parent);
+        lv_bar_set_range(bar, pd->range_min, pd->range_max);
+        return bar;
+
+    case WIDGET_BATTERY:
+        return create_battery_widget(parent,
+            pd->range_min / 10.0f, pd->range_max / 10.0f);
+
+    case WIDGET_INDICATOR:
+        // pallino colorato: verde se val≠0, grigio se val=0
+        lv_obj_t *dot = lv_obj_create(parent);
+        lv_obj_set_size(dot, 20, 20);
+        lv_obj_add_style(dot, &style_indicator_off, 0);
+        return dot;
+
+    case WIDGET_VALUE_UNIT:
+        return lv_label_create(parent);
+
+    case WIDGET_LABEL:
+    default:
+        return lv_label_create(parent);
+    }
+}
+
+// Aggiornamento widget quando arriva nuovo payload
+void update_property_widget(lv_obj_t *widget, property_descriptor_t *pd,
+                            uint8_t *payload_cache) {
+    float val = extract_payload_value(payload_cache,
+                                      pd->payload_offset, pd->payload_type);
+    char buf[16];
+    switch (pd->widget_type) {
+    case WIDGET_GAUGE:
+    case WIDGET_THERMOMETER:
+        lv_arc_set_value(widget, (int)(val * 10));
+        snprintf(buf, sizeof(buf), pd->fmt, val);
+        lv_label_set_text(lv_obj_get_child(widget, 0), buf);
+        break;
+    case WIDGET_PROGRESS:
+    case WIDGET_BATTERY:
+        lv_bar_set_value(widget, (int)(val * 10), LV_ANIM_ON);
+        break;
+    case WIDGET_INDICATOR:
+        lv_obj_set_style_bg_color(widget,
+            val != 0.0f ? lv_color_hex(0x00C853) : lv_color_hex(0x616161), 0);
+        break;
+    default:
+        snprintf(buf, sizeof(buf), pd->fmt, val);
+        lv_label_set_text(widget, buf);
+        break;
+    }
+}
+```
+
+### 6. Costruzione controlli azione — `build_action_controls()`
+
+```c
+void build_action_controls(node_info_t *node, lv_obj_t *parent) {
+    bool processed[NODE_DESC_MAX_ACTIONS] = {false};
+
+    for (int i = 0; i < node->descriptor.action_count; i++) {
+        if (processed[i]) continue;
+        action_descriptor_t *a = &node->descriptor.actions[i];
+
+        if (a->group_id != 0) {
+            // Cerca il partner con lo stesso group_id
+            int partner = -1;
+            for (int j = i + 1; j < node->descriptor.action_count; j++) {
+                if (node->descriptor.actions[j].group_id == a->group_id) {
+                    partner = j;
+                    break;
+                }
+            }
+            if (partner >= 0) {
+                processed[partner] = true;
+                if (a->ctrl_type == CTRL_STEPPER) {
+                    // TEMP+ / TEMP- → widget stepper con valore centrale = linked_property
+                    create_stepper_control(parent, a,
+                        &node->descriptor.actions[partner],
+                        node->node_id, a->linked_property);
+                } else if (a->ctrl_type == CTRL_TOGGLE) {
+                    // LUCE ON / LUCE OFF → toggle; stato visivo da linked_property
+                    create_toggle_control(parent, a,
+                        &node->descriptor.actions[partner],
+                        node->node_id, a->linked_property);
+                }
+                processed[i] = true;
+                continue;
+            }
+        }
+
+        // Azione non raggruppata
+        switch (a->ctrl_type) {
+        case CTRL_BUTTON:
+            create_button_control(parent, a, node->node_id);
+            break;
+        case CTRL_CONFIRM:
+            create_confirm_button_control(parent, a, node->node_id);
+            break;
+        default:
+            create_button_control(parent, a, node->node_id);
+        }
+        processed[i] = true;
+    }
+}
+```
+
+**Regole di grouping**:
+
+- **`CTRL_STEPPER`**: due azioni con stesso `group_id`; l'azione con `action_code` minore diventa "−", quella maggiore "+"; il valore centrale mostra il `linked_property` corrente dal payload
+- **`CTRL_TOGGLE`**: due azioni con stesso `group_id`; prima (ordine descriptor) = ON, seconda = OFF; stato visivo (premuto/rilasciato) determinato da `linked_property`
+
+### 7. Mappa widget e controlli
+
+| Tipo proprietà | Widget LVGL | Comportamento |
+| --- | --- | --- |
+| stato enum | `lv_label` | testo da `state_labels[]` |
+| temperatura | arco + label | range colorato, aggiornamento live |
+| umidità | `lv_bar` | 0–100% con colore dinamico |
+| tensione batteria | icona batteria | segmenti, rosso sotto soglia |
+| setpoint | `lv_arc` | posizione manopola |
+| booleano (luce, cam, valvola) | pallino colorato | verde=ON, grigio=OFF |
+
+| Tipo azione | Controllo UI | Note |
+| --- | --- | --- |
+| singola (`group_id=0`) | `lv_btn` | tap → MSG_COMMAND diretto |
+| toggle (`group_id>0`, `CTRL_TOGGLE`) | `lv_btn` con stato | stato riflesso da `linked_property` |
+| stepper (`group_id>0`, `CTRL_STEPPER`) | coppia `lv_btn` +/− con label centrale | valore centrale = `linked_property` |
+| critica (`CTRL_CONFIRM`) | `lv_btn` + dialog | due tap per confermare |
+
+---
+
+### 8. Ricezione alert
 
 ```c
 void on_mesh_alert(mesh_msg_t *msg) {
@@ -259,7 +451,7 @@ void on_mesh_alert(mesh_msg_t *msg) {
 
 > L'HMI **non reagisce** agli alert con comandi automatici. Visualizza, vibra, suona, logga. Punto.
 
-### 5. Invio comandi manuali
+### 9. Invio comandi manuali
 
 Solo da conferma esplicita (click encoder sul pulsante azione):
 
@@ -282,7 +474,7 @@ void on_user_command(uint16_t target_node_id, uint8_t action) {
 }
 ```
 
-### 6. Comunicazione con ESP32 secondario
+### 10. Comunicazione con ESP32 secondario
 
 L'ESP32-U4WDH invia eventi encoder via UART all'ESP32-S3:
 
@@ -302,7 +494,7 @@ void uart_rx_task(void *pvParam) {
 }
 ```
 
-### 7. Gestione batteria
+### 11. Gestione batteria
 
 ```c
 void power_monitor_task(void *pvParam) {

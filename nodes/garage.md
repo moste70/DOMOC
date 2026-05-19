@@ -24,10 +24,12 @@ La posizione della valvola può essere rilevata tramite finecorsa o sensore di c
 **Posizionamento fisico**: il nodo GARAGE è posizionato vicino alla batteria di servizio (AGM/LiFePO4).
 
 **Lettura tensione**:
+
 - **Opzione 1 (economica)**: Partitore resistivo 100kΩ / 27kΩ per scalare 0–16V → 0–3.3V ADC ESP32
 - **Opzione 2 (precisa)**: **INA219** (I2C) per tensione + corrente simultanea — consigliato per precisione
 
 **Soglie di allarme**:
+
 - **Normale**: > 13.2V (batteria carica)
 - **Warning**: 11.8V — invia MSG_ALERT al ROOT
 - **Critico**: 11.5V — invia MSG_ALERT critico, blocca comandi apertura valvole, spegnimento controllato
@@ -48,7 +50,7 @@ La posizione della valvola può essere rilevata tramite finecorsa o sensore di c
 
 ## Logica autonoma — Macchina a stati
 
-```
+```text
                     ┌─────────────────────────────────────────┐
                     │                                         │
          BOOT       │  comando APRI        timer 3s scaduto    │
@@ -133,15 +135,17 @@ static const node_descriptor_t GARAGE_DESCRIPTOR = {
     .action_count   = 4,
     .property_count = 3,
     .actions = {
-        { ACTION_OPEN,      ICON_ACT_OPEN,      "APRI"     },
-        { ACTION_CLOSE,     ICON_ACT_CLOSE,     "CHIUDI"   },
-        { ACTION_LIGHT_ON,  ICON_ACT_LIGHT_ON,  "LUCE ON"  },
-        { ACTION_LIGHT_OFF, ICON_ACT_LIGHT_OFF, "LUCE OFF" },
+        // action_code        icon_id              ctrl_type     group_id  linked_property  flags              label
+        { ACTION_OPEN,       ICON_ACT_OPEN,       CTRL_BUTTON,  0,        0,               FLAG_KEY_BLOCKED,  "APRI"     },
+        { ACTION_CLOSE,      ICON_ACT_CLOSE,      CTRL_BUTTON,  0,        0,               FLAG_KEY_BLOCKED,  "CHIUDI"   },
+        { ACTION_LIGHT_ON,   ICON_ACT_LIGHT_ON,   CTRL_TOGGLE,  1,        PROP_LIGHT_ON,   0,                 "LUCE"     },
+        { ACTION_LIGHT_OFF,  ICON_ACT_LIGHT_OFF,  CTRL_TOGGLE,  1,        PROP_LIGHT_ON,   0,                 "LUCE OFF" },
     },
     .properties = {
-        { PROP_STATE,      0, PAYLOAD_UINT8,   "",  "%s"   },
-        { PROP_BATTERY_V,  2, PAYLOAD_FLOAT32, "V", "%.1f" },
-        { PROP_DOOR_OPEN,  6, PAYLOAD_UINT8,   "",  "%s"   },
+        // property_id     offset  type             widget_type        range_min  range_max  unit  fmt
+        { PROP_STATE,      0,      PAYLOAD_UINT8,   WIDGET_LABEL,      0,         0,         "",   "%s"   },
+        { PROP_BATTERY_V,  2,      PAYLOAD_FLOAT32, WIDGET_BATTERY,    115,       145,       "V",  "%.1f" },
+        { PROP_DOOR_OPEN,  6,      PAYLOAD_UINT8,   WIDGET_INDICATOR,  0,         0,         "",   "%s"   },
     },
 };
 ```

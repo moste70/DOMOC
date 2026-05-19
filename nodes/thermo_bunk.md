@@ -7,6 +7,7 @@
 Il nodo `THERMO_BUNK` è un termostato locale dedicato al letto a castello. Gestisce autonomamente la valvola dell'aria calda in base alla temperatura impostata e rilevata nella zona letto a castello.
 
 Funzioni principali:
+
 - **Controllo valvola aria calda**: attiva/disattiva la valvola in base al confronto tra temperatura letta e temperatura impostata.
 - **Rilevamento temperatura locale**: sensore digitale (es. DS18B20, SHT31) posizionato nel letto a castello.
 - **Visualizzazione locale**: piccolo display a basso consumo (es. OLED I2C 0.96") che mostra temperatura letta e temperatura impostata.
@@ -106,7 +107,7 @@ Questa soluzione offre le stesse funzionalità software e di sviluppo della vers
 
 ## Esempio schermata display
 
-```
+```text
 T: 19.5°C  [ON]
 Set: 21.0°C
 Valvola: ON
@@ -141,15 +142,17 @@ static const node_descriptor_t THERMO_BUNK_DESCRIPTOR = {
     .action_count   = 4,
     .property_count = 3,
     .actions = {
-        { ACTION_TEMP_UP,    ICON_ACT_TEMP_UP,  "TEMP +" },
-        { ACTION_TEMP_DN,    ICON_ACT_TEMP_DN,  "TEMP -" },
-        { ACTION_LIGHT_ON,   ICON_ACT_LIGHT_ON, "LUCE"   },
-        { ACTION_GET_STATUS, ICON_ACT_INFO,     "INFO"   },
+        // action_code        icon_id              ctrl_type      group_id  linked_property  flags  label
+        { ACTION_TEMP_UP,    ICON_ACT_TEMP_UP,    CTRL_STEPPER,  1,        PROP_SETPOINT,   0,     "TEMP +" },
+        { ACTION_TEMP_DN,    ICON_ACT_TEMP_DN,    CTRL_STEPPER,  1,        PROP_SETPOINT,   0,     "TEMP -" },
+        { ACTION_LIGHT_ON,   ICON_ACT_LIGHT_ON,   CTRL_TOGGLE,   2,        PROP_LIGHT_ON,   0,     "LUCE"   },
+        { ACTION_LIGHT_OFF,  ICON_ACT_LIGHT_OFF,  CTRL_TOGGLE,   2,        PROP_LIGHT_ON,   0,     "LUCE-"  },
     },
     .properties = {
-        { PROP_TEMPERATURE, 0, PAYLOAD_FLOAT32, "°C", "%.1f" },
-        { PROP_SETPOINT,    4, PAYLOAD_FLOAT32, "°C", "%.1f" },
-        { PROP_VALVE_ON,    8, PAYLOAD_UINT8,   "",   "%s"   },
+        // property_id      offset  type             widget_type          range_min  range_max  unit   fmt
+        { PROP_TEMPERATURE, 0,      PAYLOAD_FLOAT32, WIDGET_THERMOMETER,  150,       300,       "°C",  "%.1f" },
+        { PROP_SETPOINT,    4,      PAYLOAD_FLOAT32, WIDGET_GAUGE,        150,       300,       "°C",  "%.1f" },
+        { PROP_VALVE_ON,    8,      PAYLOAD_UINT8,   WIDGET_INDICATOR,    0,         0,         "",    "%s"   },
     },
 };
 ```

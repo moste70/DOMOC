@@ -251,18 +251,20 @@ Il nodo STEP si autodescriveall'HMI inviando `MSG_DESCRIPTOR` subito dopo `MSG_R
 
 ```c
 static const node_descriptor_t STEP_DESCRIPTOR = {
-    .node_icon       = ICON_STEP,
-    .action_count    = 3,
-    .property_count  = 3,
+    .node_icon      = ICON_STEP,
+    .action_count   = 3,
+    .property_count = 3,
     .actions = {
-        { ACTION_OPEN,       ICON_ACT_OPEN,  "APRI"   },
-        { ACTION_CLOSE,      ICON_ACT_CLOSE, "CHIUDI" },
-        { ACTION_GET_STATUS, ICON_ACT_INFO,  "INFO"   },
+        // action_code        icon_id         ctrl_type     group_id  linked_property  flags              label
+        { ACTION_OPEN,       ICON_ACT_OPEN,  CTRL_BUTTON,  0,        0,               FLAG_KEY_BLOCKED,  "APRI"   },
+        { ACTION_CLOSE,      ICON_ACT_CLOSE, CTRL_BUTTON,  0,        0,               FLAG_KEY_BLOCKED,  "CHIUDI" },
+        { ACTION_GET_STATUS, ICON_ACT_INFO,  CTRL_BUTTON,  0,        0,               0,                 "INFO"   },
     },
     .properties = {
-        { PROP_STATE,       0,  PAYLOAD_UINT8,   "",   "%s"   },
-        { PROP_TEMPERATURE, 7,  PAYLOAD_FLOAT32, "°C", "%.1f" },
-        { PROP_HUMIDITY,    11, PAYLOAD_FLOAT32, "%",  "%.0f" },
+        // property_id      offset  type             widget_type          range_min  range_max  unit   fmt
+        { PROP_STATE,       0,      PAYLOAD_UINT8,   WIDGET_LABEL,        0,         0,         "",    "%s"   },
+        { PROP_TEMPERATURE, 7,      PAYLOAD_FLOAT32, WIDGET_THERMOMETER,  150,       400,       "°C",  "%.1f" },
+        { PROP_HUMIDITY,    11,     PAYLOAD_FLOAT32, WIDGET_PROGRESS,     0,         1000,      "%",   "%.0f" },
     },
 };
 ```

@@ -131,24 +131,62 @@ typedef enum {
     PROP_CAM_ON      = 0x09,  // uint8 bool
 } property_id_t;
 
+// Widget LVGL da istanziare per visualizzare una proprietà
+typedef enum {
+    WIDGET_LABEL       = 0x00, // lv_label — testo: stato enum ("CHIUSO", "APERTO", "ERRORE")
+    WIDGET_VALUE_UNIT  = 0x01, // lv_label — "{valore} {unità}" ("12.3 V", "68 %")
+    WIDGET_GAUGE       = 0x02, // lv_arc   — arco circolare; richiede range_min/range_max
+    WIDGET_PROGRESS    = 0x03, // lv_bar   — barra orizzontale; richiede range_min/range_max
+    WIDGET_INDICATOR   = 0x04, // lv_obj   — pallino colorato: verde se val≠0, grigio se val=0
+    WIDGET_THERMOMETER = 0x05, // widget composito: lv_arc + lv_label sovrapposta
+    WIDGET_BATTERY     = 0x06, // widget composito: icona segmentata + percentuale
+} widget_type_t;
+// Fallback: widget_type non riconosciuto → WIDGET_LABEL
+
+// Tipo di controllo UI per inviare un’azione
+typedef enum {
+    CTRL_BUTTON  = 0x00, // lv_btn singolo — tap diretto → MSG_COMMAND
+    CTRL_TOGGLE  = 0x01, // lv_btn stateful — stato visivo da linked_property
+                         // due azioni con stesso group_id: prima=ON, seconda=OFF
+    CTRL_STEPPER = 0x02, // coppia lv_btn [−] valore [+] — azioni con stesso group_id
+                         // action_code minore → pulsante "−", maggiore → "+"
+                         // valore centrale mostrato dal linked_property
+    CTRL_CONFIRM = 0x03, // lv_btn + dialog conferma — due tap per eseguire
+    CTRL_SLIDER  = 0x04, // lv_slider — valore continuo (futuro)
+} ctrl_type_t;
+
+// Flag per action_descriptor_t.flags
+#define FLAG_CONFIRM_REQUIRED  0x01  // mostra dialog di conferma prima di inviare
+#define FLAG_KEY_BLOCKED       0x02  // disabilitato quando KEY_ON è attivo
+
 #define NODE_DESC_MAX_ACTIONS     4
 #define NODE_DESC_MAX_PROPERTIES  4
 
 // Un’azione che il nodo espone all’HMI
 typedef struct __attribute__((packed)) {
-    uint8_t action_code;   // valore per cmd_payload_t.action
-    uint8_t icon_id;       // hmi_icon_t — icona nel carosello azioni
-    char    label[8];      // "APRI", "CHIUDI", "TEMP +" ...
-} action_descriptor_t;     // 10 byte
+    uint8_t action_code;      // valore per cmd_payload_t.action
+    uint8_t icon_id;          // hmi_icon_t — icona nel carosello azioni
+    uint8_t ctrl_type;        // ctrl_type_t — quale controllo UI generare
+    uint8_t group_id;         // 0 = azione indipendente
+                              // >0 = raggruppa con altre azioni con lo stesso group_id
+    uint8_t linked_property;  // property_id_t riflesso da questo controllo (0 = nessuno)
+                              // CTRL_TOGGLE: proprietà che mostra stato ON/OFF
+                              // CTRL_STEPPER: proprietà mostrata come valore centrale
+    uint8_t flags;            // FLAG_CONFIRM_REQUIRED | FLAG_KEY_BLOCKED
+    char    label[8];         // "APRI", "CHIUDI", "TEMP +" ...
+} action_descriptor_t;        // 14 byte
 
 // Una proprietà del payload di stato da visualizzare
 typedef struct __attribute__((packed)) {
-    uint8_t property_id;    // property_id_t
-    uint8_t payload_offset; // byte offset nel payload di stato
-    uint8_t payload_type;   // payload_type_t
-    char    unit[4];        // "°C", "V", "%", ""
-    char    fmt[8];         // "%.1f", "%d", "%s"
-} property_descriptor_t;    // 15 byte
+    uint8_t  property_id;     // property_id_t
+    uint8_t  payload_offset;  // byte offset nel payload di stato
+    uint8_t  payload_type;    // payload_type_t
+    uint8_t  widget_type;     // widget_type_t — come renderizzare il valore
+    int16_t  range_min;       // valore minimo ×10 (es. 150 = 15.0°C) — per GAUGE/PROGRESS/BATTERY
+    int16_t  range_max;       // valore massimo ×10 (es. 300 = 30.0°C)
+    char     unit[4];         // "°C", "V", "%", ""
+    char     fmt[8];          // "%.1f", "%d", "%s"
+} property_descriptor_t;      // 20 byte
 
 // Descriptor completo — inviato come payload di MSG_DESCRIPTOR
 typedef struct __attribute__((packed)) {
@@ -156,12 +194,30 @@ typedef struct __attribute__((packed)) {
     uint8_t               action_count;                                    // 0..MAX_ACTIONS
     uint8_t               property_count;                                  // 0..MAX_PROPERTIES
     uint8_t               _pad;
-    action_descriptor_t   actions[NODE_DESC_MAX_ACTIONS];                  // 4×10 = 40 byte
-    property_descriptor_t properties[NODE_DESC_MAX_PROPERTIES];            // 4×15 = 60 byte
-} node_descriptor_t;        // 104 byte — entra nel payload da 255 byte di mesh_msg_t
+    action_descriptor_t   actions[NODE_DESC_MAX_ACTIONS];                  // 4×14 = 56 byte
+    property_descriptor_t properties[NODE_DESC_MAX_PROPERTIES];            // 4×20 = 80 byte
+} node_descriptor_t;        // 140 byte — entra nel payload da 255 byte di mesh_msg_t
 ```
 
 > Il descriptor è **statico e compilato nel firmware** di ogni nodo. Non cambia mai a runtime. L’HMI non conosce i tipi di nodo — li scopre esclusivamente tramite il descriptor.
+
+### Mappa proprietà → widget e azione → controllo
+
+| Tipo proprietà | `widget_type` | Widget LVGL | Note |
+| --- | --- | --- | --- |
+| stato enum | `WIDGET_LABEL` | `lv_label` | testo da `state_labels[]` del nodo |
+| temperatura | `WIDGET_THERMOMETER` | arco + label | range colorato, aggiornamento live |
+| umidità | `WIDGET_PROGRESS` | `lv_bar` | 0–100%, range_min=0 range_max=1000 |
+| tensione batteria | `WIDGET_BATTERY` | icona segmentata | rosso sotto soglia critica |
+| setpoint termostato | `WIDGET_GAUGE` | `lv_arc` | posizione = valore impostato |
+| booleano (luce, cam, valvola) | `WIDGET_INDICATOR` | pallino colorato | verde=ON, grigio=OFF |
+
+| Tipo azione | `ctrl_type` | Controllo UI | Note |
+| --- | --- | --- | --- |
+| singola critica | `CTRL_CONFIRM` | `lv_btn` + dialog | due tap per confermare |
+| singola normale | `CTRL_BUTTON` | `lv_btn` | tap diretto → MSG_COMMAND |
+| accendi/spegni | `CTRL_TOGGLE` | `lv_btn` stateful | stesso `group_id`, stato da `linked_property` |
+| incrementa/decrementa | `CTRL_STEPPER` | `[−] valore [+]` | stesso `group_id`, valore da `linked_property` |
 
 ---
 
