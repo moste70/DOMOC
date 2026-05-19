@@ -17,12 +17,18 @@
 
 ---
 
-## 2. DRIVER MOTORE / H-BRIDGE — €7.50
+## 2. RELAY E DRIVER H-BRIDGE — €30
 
-| Descrizione | Modello | Quantità | Prezzo unitario | Totale | Nodi |
+Il PCB universale v3.0 usa H-bridge relay (3 relay SPDT per ponte) — nessun IC DRV8833.
+Ogni scheda monta 8 relay SPDT (6 per i 2 H-bridge + 2 di uso generale) e 8 driver NPN.
+
+| Descrizione | Modello | Qtà totale | Prezzo unitario | Totale | Note |
 |---|---|---|---|---|---|
-| Dual H-Bridge 2A | DRV8833DBVR (QFN) o modulo | 3 | €2.50 | €7.50 | STEP, GARAGE, FRONT_DOOR |
-| **SUBTOTALE DRIVER** | | **3** | | **€7.50** | |
+| Relay SPDT 12V 10A | HRS1H-S-DC12V (Panasonic) | 40 | €0.60 | €24.00 | 8×scheda × 5 schede PCB |
+| NPN driver relay | BC547B SOT-23 | 40 | €0.06 | €2.40 | 8×scheda × 5 schede PCB |
+| Diodo freewheeling | 1N4148 SOD-323 | 40 | €0.04 | €1.60 | 1 per relay |
+| Resistore base 1kΩ 0402 | — | 40 | — | €0.50 | Kit |
+| **SUBTOTALE RELAY** | | | | **€28.50** | |
 
 ---
 
@@ -47,13 +53,17 @@
 
 ---
 
-## 5. PROTEZIONE E ISOLAMENTO — €2
+## 5. PROTEZIONE E ISOLAMENTO — €6
 
-| Descrizione | Modello | Quantità | Prezzo unitario | Totale | Nodi |
+Il PCB v3.0 monta 2 optoisolatori PC817-A per scheda (configurabili via JSON).
+I relay K7/K8 (uso generale) sono già conteggiati nella sezione 2.
+
+| Descrizione | Modello | Qtà totale | Prezzo unitario | Totale | Note |
 |---|---|---|---|---|---|
-| Optoisolatore per chiave 12V | PC817-A | 1 | €0.50 | €0.50 | ROOT (rilevamento accensione) |
-| Relay NC 12V 10A | Relay SRD-05VDC-SL-C | 1 | €1.50 | €1.50 | FRESH_WATER (valvola acque) |
-| **SUBTOTALE PROTEZIONE** | | | | **€2.00** | |
+| Optoisolatore 12V isolato | PC817-A (SMD) | 10 | €0.50 | €5.00 | 2×scheda × 5 schede PCB |
+| Resistore R_ISO 10kΩ ¼W | — | 10 | — | €0.20 | LED optoisolatore |
+| Resistore R_OUT 10kΩ 0402 | — | 10 | — | €0.10 | Pull-up uscita |
+| **SUBTOTALE PROTEZIONE** | | | | **€5.30** | |
 
 ---
 
@@ -71,8 +81,8 @@
 
 | Descrizione | Valore/Tipo | Quantità | Prezzo totale | Note |
 |---|---|---|---|---|
-| Resistenza 100kΩ 1/4W | 100k 5% | 10 | €0.20 | Partitori ADC |
-| Resistenza 27kΩ 1/4W | 27k 5% | 10 | €0.15 | Partitori ADC |
+| Resistenza 100kΩ 1/4W | 100k 1% | 10 | €0.20 | Partitori ADC (2×scheda × 5 schede) |
+| Resistenza 27kΩ 1/4W | 27k 1% | 10 | €0.15 | Partitori ADC (2×scheda × 5 schede) |
 | Resistenza 10kΩ 1/4W | 10k 5% | 20 | €0.20 | Pull-up, protezione |
 | Condensatore ceramico 100nF | 100nF 16V X7R | 15 | €0.30 | Decoupling tutti i nodi |
 | Condensatore ceramico 10µF | 10µF 16V | 10 | €0.40 | Decoupling |
@@ -122,14 +132,14 @@
 | Categoria | Costo |
 |---|---|
 | Microcontrollori | €40.00 |
-| Driver H-Bridge | €7.50 |
+| Relay e driver H-bridge | €28.50 |
 | Gestione batteria HMI | €3.00 |
 | Sensori | €9.80 |
-| Protezione/Isolamento | €2.00 |
+| Protezione/Isolamento | €5.30 |
 | Alimentazione | €13.50 |
 | Componenti passivi | €5.00 |
 | Connettori JST | €3.00 |
-| **SUBTOTALE CIRCUITERIA** | **€83.80** |
+| **SUBTOTALE CIRCUITERIA** | **€105.10** |
 | | |
 | Batteria LiPo (opzionale) | €15-25 |
 | Display touch (opzionale) | €30-50 |
@@ -177,7 +187,8 @@ Lead time: 3-7 giorni (EU stock)
 - [ ] MCU ESP32-C3×10
 - [ ] MCU ESP32-S3×2
 - [ ] MCU ESP32-CAM×3
-- [ ] DRV8833×3
+- [ ] Relay HRS1H-S-DC12V×40 (8 per scheda PCB × 5 schede)
+- [ ] BC547B SOT-23×40 (driver NPN)
 - [ ] TP4056+DW01 oppure BQ24075
 - [ ] DS18B20×5
 - [ ] SHT31×2
@@ -185,8 +196,8 @@ Lead time: 3-7 giorni (EU stock)
 - [ ] Capacitori kit (100nF, 10µF, 470µF)
 - [ ] Buck converter MP2307×9
 - [ ] Connettori JST kit
-- [ ] PC817 optoisolatore
-- [ ] Relay 12V NC
+- [ ] PC817-A optoisolatore SMD×10 (2 per scheda × 5 schede)
+- [ ] 1N4148 SOD-323×40 (freewheeling relay)
 
 ### Opzionale (Completamento HMI)
 - [ ] Batteria LiPo 2000-3000mAh

@@ -110,59 +110,88 @@ Al boot il firmware lo legge, lo valida e popola le strutture C interne.
 
 La struttura varia per tipo di nodo. Ogni campo non usato può essere omesso o impostato a `null`.
 
-### Sottosezione `gpio`
+### Struttura `hardware` per PCB universale v3.0
+
+Sul PCB universale ogni risorsa fisica è identificata da un nome fisso (`hb1`, `hb2`,
+`rel1`, `rel2`, `opt1`, `opt2`, `adc1`, `adc2`, `i2c`, `onewire`). Il firmware legge
+il campo `"role"` di ogni risorsa e configura l'IO di conseguenza.
 
 ```json
 "hardware": {
-  "gpio": {
-    "motor_dir_a":  2,
-    "motor_dir_b":  3,
-    "motor_enable": 4,
-    "relay_power":  7,
-    "led_status":   10,
-    "fc_closed":    5,
-    "fc_open":      6,
-    "button_local": 9
+  "hb1": {
+    "role": "motor",
+    "gpio_dir_a": 11,
+    "gpio_dir_b": 12,
+    "gpio_enable": 13,
+    "motor_run_ms": 4000,
+    "opt_fc_closed": "opt1",
+    "opt_fc_open":   "opt2"
   },
+  "hb2": { "role": "unused" },
+  "rel1": { "role": "unused" },
+  "rel2": { "role": "unused" },
+  "opt1": { "role": "fc_closed", "gpio": 3, "hb_id": "hb1" },
+  "opt2": { "role": "fc_open",   "gpio": 4, "hb_id": "hb1" },
+  "adc1": { "role": "vbat_engine",  "gpio": 1 },
+  "adc2": { "role": "unused",       "gpio": 2 },
   "i2c": {
-    "sda": 8,
-    "scl": 9,
-    "freq_hz": 400000
+    "gpio_sda": 8,
+    "gpio_scl": 9,
+    "freq_hz": 400000,
+    "devices": [
+      { "address": "0x44", "type": "SHT31", "role": "temp_humidity" }
+    ]
   },
-  "dht11": {
-    "pin": 10
-  },
-  "display": {
-    "type": "OLED_SSD1306",
-    "width": 128,
-    "height": 32,
-    "i2c_addr": 60
-  },
-  "sensors": ["DHT11"]
+  "onewire": {
+    "gpio": 10,
+    "devices": [
+      { "address": "28FF641D1C040000", "role": "temp_external" }
+    ]
+  }
 }
 ```
 
-#### GPIO — Nomi riservati
+#### Ruoli per tipo di risorsa
 
-| Nome campo GPIO | Tipo nodo | Funzione |
+**H-bridge** (`hb1`, `hb2`): `"motor"` | `"unused"`
+
+**Relay** (`rel1`, `rel2`): `"camera"` | `"valve_nc"` | `"lights"` | `"generic_no"` | `"unused"`
+
+**Optoisolatore** (`opt1`, `opt2`):
+
+| role | Funzione |
+|---|---|
+| `"key_on"` | Positivo sotto chiave — broadcast MSG_KEY_ON/OFF |
+| `"fc_closed"` | Finecorsa chiuso (collegato a `hb_id`) |
+| `"fc_open"` | Finecorsa aperto (collegato a `hb_id`) |
+| `"door_sensor"` | Sensore porta/portellone |
+| `"button"` | Pulsante esterno |
+| `"generic_di"` | Ingresso digitale generico |
+| `"unused"` | Disabilitato |
+
+**Partitore ADC** (`adc1`, `adc2`): `"vbat_engine"` | `"vbat_service"` | `"voltage_generic"` | `"unused"`
+
+**Dispositivi I2C** (`i2c.devices[]`): lista di oggetti `{ "address", "type", "role" }`
+
+| type | role | Dispositivo |
 |---|---|---|
-| `motor_dir_a` | STEP, GREY_WATER | DIR A H-bridge (apertura) |
-| `motor_dir_b` | STEP, GREY_WATER | DIR B H-bridge (chiusura) |
-| `motor_enable` | STEP, GREY_WATER | Enable H-bridge |
-| `relay_power` | STEP, GREY_WATER | Relay alimentazione motore/attuatore |
-| `relay_valve` | FRESH_WATER | Relay elettrovalvola |
-| `relay_valve_heat` | THERMO_BUNK, THERMO_LOFT | Relay valvola aria calda |
-| `relay_light_hi` | THERMO_BUNK | Relay luce letto alto |
-| `relay_light_lo` | THERMO_BUNK | Relay luce letto basso |
-| `fc_closed` | STEP | Finecorsa posizione chiusa |
-| `fc_open` | STEP | Finecorsa posizione aperta |
-| `led_status` | Tutti | LED stato (RGB o singolo) |
-| `button_local` | Tutti | Pulsante locale standalone |
-| `btn_temp_up` | THERMO_* | Pulsante Temperatura + |
-| `btn_temp_dn` | THERMO_* | Pulsante Temperatura - |
-| `btn_onoff` | THERMO_* | Pulsante ON/OFF termostato locale |
-| `key_signal` | KEY_ON | Segnale +12V chiave accensione |
-| `camera_power` | GREY_WATER | Alimentazione videocamera |
+| `"INA219"` | `"vbat_service"` / `"vbat_engine"` | Monitor batteria (V + A) |
+| `"SHT31"` | `"temp_humidity"` | Temperatura + umidità |
+| `"generic"` | `"sensor"` | Sensore I2C generico |
+
+**Dispositivi 1-Wire** (`onewire.devices[]`): lista di oggetti `{ "address", "role" }`
+
+| role | Funzione |
+|---|---|
+| `"temp_ambient"` | Temperatura ambiente nodo |
+| `"temp_external"` | Sonda esterna remota |
+| `"temp_water"` | Temperatura impianto idrico |
+| `"temp_engine"` | Temperatura vano motore/batterie |
+| `"unused"` | Ignorato |
+
+> Per nodi con display (THERMO_BUNK, THERMO_LOFT, HMI) che non montano il PCB
+> universale, la sezione `hardware` usa ancora il formato `gpio` classico con i nomi
+> funzionali diretti (`relay_valve_heat`, `btn_temp_up`, ecc.).
 
 ---
 
@@ -341,8 +370,8 @@ di ridefinirlo senza ricompilare — utile per customizzazione sul campo.
     "id": 3,
     "type": "STEP",
     "label": "Gradino accesso",
-    "hw_revision": "1.1",
-    "fw_min_version": "2.0.0"
+    "hw_revision": "3.0",
+    "fw_min_version": "3.0.0"
   },
   "mesh": {
     "mesh_id": [119, 119, 119, 119, 119, 119],
@@ -353,21 +382,34 @@ di ridefinirlo senza ricompilare — utile per customizzazione sul campo.
     "tx_power_dbm": 10
   },
   "hardware": {
-    "gpio": {
-      "motor_dir_a": 2,
-      "motor_dir_b": 3,
-      "motor_enable": 4,
-      "relay_power": 7,
-      "led_status": 10,
-      "fc_closed": 5,
-      "fc_open": 6,
-      "button_local": 9
+    "hb1": {
+      "role": "motor",
+      "gpio_dir_a": 11, "gpio_dir_b": 12, "gpio_enable": 13,
+      "motor_run_ms": 4000,
+      "opt_fc_closed": "opt1", "opt_fc_open": "opt2"
     },
-    "dht11": { "pin": 10 },
-    "sensors": ["DHT11"]
+    "hb2":  { "role": "unused" },
+    "rel1": { "role": "unused" },
+    "rel2": { "role": "unused" },
+    "opt1": { "role": "fc_closed", "gpio": 3, "hb_id": "hb1" },
+    "opt2": { "role": "fc_open",   "gpio": 4, "hb_id": "hb1" },
+    "adc1": { "role": "unused", "gpio": 1 },
+    "adc2": { "role": "unused", "gpio": 2 },
+    "i2c": {
+      "gpio_sda": 8, "gpio_scl": 9, "freq_hz": 400000,
+      "devices": [
+        { "address": "0x44", "type": "SHT31", "role": "temp_humidity" }
+      ]
+    },
+    "onewire": {
+      "gpio": 10,
+      "devices": [
+        { "address": "28FF641D1C040000", "role": "temp_external" }
+      ]
+    }
   },
   "behavior": {
-    "motor_run_ms": 3000,
+    "motor_run_ms": 4000,
     "motor_timeout_ms": 10000,
     "debounce_fc_ms": 50,
     "standalone_timeout_s": 30,
@@ -440,8 +482,8 @@ di ridefinirlo senza ricompilare — utile per customizzazione sul campo.
     "id": 4,
     "type": "GREY_WATER",
     "label": "Valvola scarico acque grigie",
-    "hw_revision": "1.0",
-    "fw_min_version": "2.0.0"
+    "hw_revision": "3.0",
+    "fw_min_version": "3.0.0"
   },
   "mesh": {
     "mesh_id": [119, 119, 119, 119, 119, 119],
@@ -452,15 +494,26 @@ di ridefinirlo senza ricompilare — utile per customizzazione sul campo.
     "tx_power_dbm": 10
   },
   "hardware": {
-    "gpio": {
-      "motor_dir_a": 2,
-      "motor_dir_b": 3,
-      "motor_enable": 4,
-      "relay_power": 7,
-      "camera_power": 8,
-      "led_status": 10
+    "hb1": {
+      "role": "motor",
+      "gpio_dir_a": 11, "gpio_dir_b": 12, "gpio_enable": 13,
+      "motor_run_ms": 3000,
+      "opt_fc_closed": null, "opt_fc_open": null
     },
-    "sensors": []
+    "hb2":  { "role": "unused" },
+    "rel1": { "role": "camera" },
+    "rel2": { "role": "unused" },
+    "opt1": { "role": "unused", "gpio": 3 },
+    "opt2": { "role": "unused", "gpio": 4 },
+    "adc1": { "role": "unused", "gpio": 1 },
+    "adc2": { "role": "unused", "gpio": 2 },
+    "i2c":  { "gpio_sda": 8, "gpio_scl": 9, "freq_hz": 400000, "devices": [] },
+    "onewire": {
+      "gpio": 10,
+      "devices": [
+        { "address": "28BB220F00000000", "role": "temp_ambient" }
+      ]
+    }
   },
   "behavior": {
     "motor_run_ms": 3000,
@@ -571,33 +624,42 @@ esp_err_t load_node_config(node_cfg_t *cfg) {
 ## Riepilogo campi — Riferimento rapido
 
 ```
-version                           int      Schema version (attualmente: 1)
-node.id                           uint8    ID unico nodo (1–253)
-node.type                         string   Tipo funzionale
-node.label                        string   Nome leggibile (max 32 char)
-node.hw_revision                  string   Revisione PCB
-node.fw_min_version               string   Versione firmware minima (semver)
-mesh.mesh_id                      array[6] BSSID virtuale mesh
-mesh.channel                      uint8    Canale Wi-Fi
-mesh.password                     string   Password WPA2 mesh
-mesh.root_id                      uint8    ID nodo ROOT
-mesh.tx_power_dbm                 int8     Potenza TX (2–20 dBm)
-hardware.gpio.*                   int      Pin GPIO (vedi tabella nomi)
-hardware.i2c.sda/scl              int      Pin I2C
-hardware.i2c.freq_hz              int      Frequenza I2C (tipico: 400000)
-hardware.display.type             string   Tipo display (OLED_SSD1306, TFT_ILI9341...)
-hardware.sensors                  array    Lista sensori abilitati
-behavior.motor_run_ms             uint32   Durata impulso motore/valvola
-behavior.motor_timeout_ms         uint32   Timeout sicurezza motore
-behavior.debounce_fc_ms           uint32   Debounce finecorsa
-behavior.standalone_timeout_s     uint32   Timeout prima di STANDALONE_MODE
-behavior.heartbeat_interval_s     uint16   Frequenza heartbeat
-behavior.sensor_read_interval_s   uint16   Frequenza lettura sensori
-behavior.thermo.setpoint_default_c float  Setpoint iniziale
-behavior.thermo.setpoint_min_c    float   Limite minimo setpoint
-behavior.thermo.setpoint_max_c    float   Limite massimo setpoint
-behavior.thermo.setpoint_step_c   float   Passo incremento setpoint
-behavior.thermo.hysteresis_c      float   Isteresi termostato
-descriptor.*                      object  Override descriptor HMI (opzionale)
-subscriptions                     array   Override sottoscrizioni mesh (opzionale)
+version                              int      Schema version (attualmente: 1)
+node.id                              uint8    ID unico nodo (1–253)
+node.type                            string   Tipo funzionale
+node.label                           string   Nome leggibile (max 32 char)
+node.hw_revision                     string   Revisione PCB
+node.fw_min_version                  string   Versione firmware minima (semver)
+mesh.mesh_id                         array[6] BSSID virtuale mesh
+mesh.channel                         uint8    Canale Wi-Fi
+mesh.password                        string   Password WPA2 mesh
+mesh.root_id                         uint8    ID nodo ROOT
+mesh.tx_power_dbm                    int8     Potenza TX (2–20 dBm)
+hardware.hb1/hb2.role                string   "motor" | "unused"
+hardware.hb1/hb2.gpio_dir_a/b/en     int      GPIO H-bridge (fissi: 11/12/13, 14/15/16)
+hardware.hb1/hb2.motor_run_ms        uint32   Durata impulso motore (ms)
+hardware.hb1/hb2.opt_fc_closed/open  string   Riferimento a opt1/opt2 o null
+hardware.rel1/rel2.role              string   "camera"|"valve_nc"|"lights"|"generic_no"|"unused"
+hardware.opt1/opt2.role              string   "key_on"|"fc_closed"|"fc_open"|"door_sensor"|...
+hardware.opt1/opt2.gpio              int      GPIO optoisolatore (fissi: 3, 4)
+hardware.opt1/opt2.hb_id             string   "hb1"|"hb2" (solo per fc_closed/fc_open)
+hardware.adc1/adc2.role              string   "vbat_engine"|"vbat_service"|"voltage_generic"|"unused"
+hardware.adc1/adc2.gpio              int      GPIO ADC (fissi: 1, 2)
+hardware.i2c.gpio_sda/scl            int      GPIO I2C (fissi: 8, 9)
+hardware.i2c.freq_hz                 int      Frequenza I2C (tipico: 400000)
+hardware.i2c.devices[]               array    Lista dispositivi I2C {address, type, role}
+hardware.onewire.gpio                int      GPIO 1-Wire (fisso: 10)
+hardware.onewire.devices[]           array    Lista dispositivi 1-Wire {address, role}
+behavior.motor_run_ms                uint32   Durata impulso motore/valvola
+behavior.motor_timeout_ms            uint32   Timeout sicurezza motore
+behavior.debounce_fc_ms              uint32   Debounce finecorsa
+behavior.standalone_timeout_s        uint32   Timeout prima di STANDALONE_MODE
+behavior.heartbeat_interval_s        uint16   Frequenza heartbeat
+behavior.sensor_read_interval_s      uint16   Frequenza lettura sensori
+behavior.thermo.setpoint_default_c   float    Setpoint iniziale
+behavior.thermo.setpoint_min/max_c   float    Limiti setpoint
+behavior.thermo.setpoint_step_c      float    Passo incremento setpoint
+behavior.thermo.hysteresis_c         float    Isteresi termostato
+descriptor.*                         object   Override descriptor HMI (opzionale)
+subscriptions                        array    Override sottoscrizioni mesh (opzionale)
 ```

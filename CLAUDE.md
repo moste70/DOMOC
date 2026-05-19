@@ -38,14 +38,15 @@ popolato. Il ruolo di ogni IO è assegnato da `node_config.json`.
 
 | Risorsa | Qtà | GPIO |
 | --- | --- | --- |
-| H-bridge relay (K1-K3) | 2 | HB1: GPIO11/12/13 — HB2: GPIO14/15/16 |
-| Relay SPDT generale | 2 | GPIO17 (REL1), GPIO18 (REL2) |
-| Optoisolatore PC817 (12V isolato) | 4 | GPIO3/4/5/6 |
+| H-bridge relay (K1-K3, K4-K6) | 2 | HB1: GPIO11/12/13 — HB2: GPIO14/15/16 |
+| Relay SPDT generale (K7, K8) | 2 | GPIO17 (REL1), GPIO18 (REL2) |
+| Optoisolatore PC817-A (12V isolato) | 2 | GPIO3 (OPT1), GPIO4 (OPT2) |
 | Partitore ADC (0–16.5V→0–3.3V) | 2 | GPIO1 (ADC_DIV1), GPIO2 (ADC_DIV2) |
 | Bus 1-Wire (DS18B20) | 1 | GPIO10 |
-| I2C espansione | 1 | GPIO8 (SDA), GPIO9 (SCL) |
+| Bus I2C (pull-up 4.7kΩ fissi) | 1 | GPIO8 (SDA), GPIO9 (SCL) |
 | LED RGB WS2812B | 1 | GPIO21 |
 | UART debug | 1 | GPIO43/44 |
+| GPIO liberi (espansione) | 3 | GPIO5 (EXP1), GPIO6 (EXP2), GPIO7 (EXP3) |
 
 Documentazione completa: `Document/pcb_universale_esp32s3.md`
 
@@ -119,12 +120,14 @@ Struttura minima:
     "hb2":  { "role": "unused" },
     "rel1": { "role": "unused" },
     "rel2": { "role": "unused" },
-    "opt1": { "role": "fc_open",   "gpio": 3 },
-    "opt2": { "role": "fc_closed", "gpio": 4 },
-    "opt3": { "role": "unused",    "gpio": 5 },
-    "opt4": { "role": "unused",    "gpio": 6 },
-    "adc1": { "role": "unused",    "gpio": 1 },
-    "adc2": { "role": "unused",    "gpio": 2 },
+    "opt1": { "role": "fc_closed", "gpio": 3, "hb_id": "hb1" },
+    "opt2": { "role": "fc_open",   "gpio": 4, "hb_id": "hb1" },
+    "adc1": { "role": "unused", "gpio": 1 },
+    "adc2": { "role": "unused", "gpio": 2 },
+    "i2c": {
+      "gpio_sda": 8, "gpio_scl": 9, "freq_hz": 400000,
+      "devices": [{ "address": "0x44", "type": "SHT31", "role": "temp_humidity" }]
+    },
     "onewire": {
       "gpio": 10,
       "devices": [{ "address": "28FF641D1C040000", "role": "temp_external" }]
@@ -136,9 +139,10 @@ Struttura minima:
 **Ruoli disponibili:**
 - H-bridge: `"motor"`, `"unused"`
 - Relay: `"camera"`, `"valve_nc"`, `"lights"`, `"generic_no"`, `"unused"`
-- Optoisolatore: `"key_on"`, `"fc_closed"`, `"fc_open"`, `"door_sensor"`, `"button"`, `"generic_di"`, `"unused"`
-- ADC: `"vbat_engine"`, `"vbat_service"`, `"voltage_generic"`, `"unused"`
-- 1-Wire: `"temp_ambient"`, `"temp_external"`, `"temp_water"`, `"temp_engine"`, `"unused"`
+- Optoisolatore (`opt1`, `opt2`): `"key_on"`, `"fc_closed"`, `"fc_open"`, `"door_sensor"`, `"button"`, `"generic_di"`, `"unused"`
+- ADC (`adc1`, `adc2`): `"vbat_engine"`, `"vbat_service"`, `"voltage_generic"`, `"unused"`
+- I2C devices (`i2c.devices[]`): oggetti `{address, type, role}` — type: `"INA219"`, `"SHT31"`, `"generic"`
+- 1-Wire devices (`onewire.devices[]`): `"temp_ambient"`, `"temp_external"`, `"temp_water"`, `"temp_engine"`, `"unused"`
 
 Documentazione completa: `Document/node_config_file.md`
 
