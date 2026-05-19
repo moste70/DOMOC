@@ -7,6 +7,7 @@
 Il nodo `THERMO_BUNK` è un termostato locale dedicato al letto a castello. Gestisce autonomamente la valvola dell'aria calda in base alla temperatura impostata e rilevata nella zona letto a castello.
 
 Funzioni principali:
+
 - **Controllo valvola aria calda**: attiva/disattiva la valvola in base al confronto tra temperatura letta e temperatura impostata.
 - **Rilevamento temperatura locale**: sensore digitale (es. DS18B20, SHT31) posizionato nel letto a castello.
 - **Visualizzazione locale**: piccolo display a basso consumo (es. OLED I2C 0.96") che mostra temperatura letta e temperatura impostata.
@@ -106,7 +107,7 @@ Questa soluzione offre le stesse funzionalità software e di sviluppo della vers
 
 ## Esempio schermata display
 
-```
+```text
 T: 19.5°C  [ON]
 Set: 21.0°C
 Valvola: ON
@@ -118,6 +119,43 @@ Valvola: ON
 - Valvola: stato attuale attuatore
 
 ---
+
+## Payload di stato
+
+```c
+typedef struct __attribute__((packed)) {
+    float    temperature;  // offset 0-3  — °C rilevata
+    float    setpoint;     // offset 4-7  — °C impostata
+    uint8_t  valve_on;     // offset 8    — 1 = valvola aria calda aperta
+    uint8_t  mode_local;   // offset 9    — 1 = controllo locale, 0 = centrale
+    uint8_t  light_hi;     // offset 10   — 1 = luce letto alto accesa
+    uint8_t  light_lo;     // offset 11   — 1 = luce letto basso accesa
+    uint8_t  error_code;   // offset 12
+} thermo_bunk_status_t;    // 13 byte
+```
+
+## Descriptor HMI
+
+```c
+static const node_descriptor_t THERMO_BUNK_DESCRIPTOR = {
+    .node_icon      = ICON_THERMOMETER,
+    .action_count   = 4,
+    .property_count = 3,
+    .actions = {
+        // action_code        icon_id              ctrl_type      group_id  linked_property  flags  label
+        { ACTION_TEMP_UP,    ICON_ACT_TEMP_UP,    CTRL_STEPPER,  1,        PROP_SETPOINT,   0,     "TEMP +" },
+        { ACTION_TEMP_DN,    ICON_ACT_TEMP_DN,    CTRL_STEPPER,  1,        PROP_SETPOINT,   0,     "TEMP -" },
+        { ACTION_LIGHT_ON,   ICON_ACT_LIGHT_ON,   CTRL_TOGGLE,   2,        PROP_LIGHT_ON,   0,     "LUCE"   },
+        { ACTION_LIGHT_OFF,  ICON_ACT_LIGHT_OFF,  CTRL_TOGGLE,   2,        PROP_LIGHT_ON,   0,     "LUCE-"  },
+    },
+    .properties = {
+        // property_id      offset  type             widget_type          range_min  range_max  unit   fmt
+        { PROP_TEMPERATURE, 0,      PAYLOAD_FLOAT32, WIDGET_THERMOMETER,  150,       300,       "°C",  "%.1f" },
+        { PROP_SETPOINT,    4,      PAYLOAD_FLOAT32, WIDGET_GAUGE,        150,       300,       "°C",  "%.1f" },
+        { PROP_VALVE_ON,    8,      PAYLOAD_UINT8,   WIDGET_INDICATOR,    0,         0,         "",    "%s"   },
+    },
+};
+```
 
 ## Sicurezza e fallback
 

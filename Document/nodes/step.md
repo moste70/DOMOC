@@ -232,13 +232,59 @@ Ogni 5 secondi il nodo invia un heartbeat con il proprio stato corrente:
 
 ```c
 typedef struct __attribute__((packed)) {
-    uint8_t  state;          // Enum: CLOSED, OPEN, OPENING, CLOSING, ERROR, STANDALONE
-    uint8_t  fc_closed;      // 1 = finecorsa chiuso attivo
-    uint8_t  fc_open;        // 1 = finecorsa aperto attivo
-    uint8_t  motor_active;   // 1 = motore in movimento
-    uint16_t last_move_ms;   // Durata ultimo movimento in ms (diagnostica)
-    uint8_t  error_code;     // 0 = nessun errore, 1 = timeout finecorsa
-} step_status_t;
+    uint8_t  state;          // offset 0 — CLOSED/OPEN/OPENING/CLOSING/ERROR/STANDALONE
+    uint8_t  fc_closed;      // offset 1 — 1 = finecorsa chiuso attivo
+    uint8_t  fc_open;        // offset 2 — 1 = finecorsa aperto attivo
+    uint8_t  error_code;     // offset 3 — 0 = ok, 1 = timeout finecorsa
+    uint16_t last_move_ms;   // offset 4-5 — durata ultimo movimento (diagnostica)
+    uint8_t  _pad;           // offset 6 — allineamento
+    float    temperature;    // offset 7-10 — °C da SHT31
+    float    humidity;       // offset 11-14 — %RH da SHT31
+} step_status_t;             // 15 byte
+```
+
+---
+
+## Descriptor HMI
+
+Il nodo STEP si autodescriveall'HMI inviando `MSG_DESCRIPTOR` subito dopo `MSG_REGISTER_ACK`. L'HMI usa questi dati per costruire il carosello senza alcuna conoscenza hardcodata del nodo.
+
+```c
+static const node_descriptor_t STEP_DESCRIPTOR = {
+    .node_icon      = ICON_STEP,
+    .action_count   = 3,
+    .property_count = 3,
+    .actions = {
+        // action_code        icon_id         ctrl_type     group_id  linked_property  flags              label
+        { ACTION_OPEN,       ICON_ACT_OPEN,  CTRL_BUTTON,  0,        0,               FLAG_KEY_BLOCKED,  "APRI"   },
+        { ACTION_CLOSE,      ICON_ACT_CLOSE, CTRL_BUTTON,  0,        0,               FLAG_KEY_BLOCKED,  "CHIUDI" },
+        { ACTION_GET_STATUS, ICON_ACT_INFO,  CTRL_BUTTON,  0,        0,               0,                 "INFO"   },
+    },
+    .properties = {
+        // property_id      offset  type             widget_type          range_min  range_max  unit   fmt
+        { PROP_STATE,       0,      PAYLOAD_UINT8,   WIDGET_LABEL,        0,         0,         "",    "%s"   },
+        { PROP_TEMPERATURE, 7,      PAYLOAD_FLOAT32, WIDGET_THERMOMETER,  150,       400,       "°C",  "%.1f" },
+        { PROP_HUMIDITY,    11,     PAYLOAD_FLOAT32, WIDGET_PROGRESS,     0,         1000,      "%",   "%.0f" },
+    },
+};
+```
+
+All'avvio, dopo aver ricevuto `MSG_REGISTER_ACK`, il nodo invia:
+
+```c
+void send_descriptor(void) {
+    mesh_msg_t msg = {
+        .version    = PROTOCOL_VERSION,
+        .msg_type   = MSG_DESCRIPTOR,
+        .node_id    = NODE_ID_STEP,
+        .target_id  = NODE_ID_ROOT,
+        .seq_num    = next_seq_num(),
+        .payload_len = sizeof(node_descriptor_t),
+    };
+    memcpy(msg.payload, &STEP_DESCRIPTOR, sizeof(node_descriptor_t));
+    msg.crc16 = crc16_calc(&msg);
+    enqueue_mesh_tx(&msg);
+}
 ```
 
 ---

@@ -17,23 +17,8 @@ La posizione della valvola può essere rilevata tramite finecorsa o sensore di c
 - **ESP32-C3**
 - **Driver H-bridge DRV8833** (Texas Instruments) — 2A per canale, protezione termica integrata — [Datasheet](https://www.ti.com/lit/ds/symlink/drv8833.pdf)
 - **Elettrovalvola 12V** (bipolare, inversione polarità)
-- **Partitore ADC o INA219** per monitoraggio batteria di servizio
-
-### Sensore batteria di servizio (CRITICO)
-
-**Posizionamento fisico**: il nodo GARAGE è posizionato vicino alla batteria di servizio (AGM/LiFePO4).
-
-**Lettura tensione**:
-- **Opzione 1 (economica)**: Partitore resistivo 100kΩ / 27kΩ per scalare 0–16V → 0–3.3V ADC ESP32
-- **Opzione 2 (precisa)**: **INA219** (I2C) per tensione + corrente simultanea — consigliato per precisione
-
-**Soglie di allarme**:
-- **Normale**: > 13.2V (batteria carica)
-- **Warning**: 11.8V — invia MSG_ALERT al ROOT
-- **Critico**: 11.5V — invia MSG_ALERT critico, blocca comandi apertura valvole, spegnimento controllato
-- **Lettura**: ogni 30s in idle, ogni 5s se tensione < 12.0V
-
-**Logica di sicurezza**: se la tensione della batteria scende sotto 11.5V, il nodo GARAGE blocca qualsiasi comando di apertura valvola e notifica immediatamente il ROOT per azioni di emergenza (chiusura attuatori, spegnimento carichi non essenziali).
+- **Relay di potenza** per taglio alimentazione in standby
+- **Partitore resistivo** o **sensore INA219** per la lettura della tensione della batteria di servizio
 
 ## Logica di controllo
 
@@ -48,7 +33,7 @@ La posizione della valvola può essere rilevata tramite finecorsa o sensore di c
 
 ## Logica autonoma — Macchina a stati
 
-```
+```text
                     ┌─────────────────────────────────────────┐
                     │                                         │
          BOOT       │  comando APRI        timer 3s scaduto    │
@@ -113,10 +98,46 @@ La posizione della valvola può essere rilevata tramite finecorsa o sensore di c
 
 ---
 
+## Payload di stato
+
+```c
+typedef struct __attribute__((packed)) {
+    uint8_t  state;       // offset 0 — CLOSED/OPEN/OPENING/CLOSING/ERROR
+    uint8_t  error_code;  // offset 1
+    float    battery_v;   // offset 2-5 — tensione batteria servizio (V)
+    uint8_t  door_open;   // offset 6 — 1 = portellone garage aperto
+    uint8_t  light_on;    // offset 7 — 1 = luci garage accese
+} garage_status_t;        // 8 byte
+```
+
+## Descriptor HMI
+
+```c
+static const node_descriptor_t GARAGE_DESCRIPTOR = {
+    .node_icon      = ICON_VALVE_GREY,
+    .action_count   = 4,
+    .property_count = 3,
+    .actions = {
+        // action_code        icon_id              ctrl_type     group_id  linked_property  flags              label
+        { ACTION_OPEN,       ICON_ACT_OPEN,       CTRL_BUTTON,  0,        0,               FLAG_KEY_BLOCKED,  "APRI"     },
+        { ACTION_CLOSE,      ICON_ACT_CLOSE,      CTRL_BUTTON,  0,        0,               FLAG_KEY_BLOCKED,  "CHIUDI"   },
+        { ACTION_LIGHT_ON,   ICON_ACT_LIGHT_ON,   CTRL_TOGGLE,  1,        PROP_LIGHT_ON,   0,                 "LUCE"     },
+        { ACTION_LIGHT_OFF,  ICON_ACT_LIGHT_OFF,  CTRL_TOGGLE,  1,        PROP_LIGHT_ON,   0,                 "LUCE OFF" },
+    },
+    .properties = {
+        // property_id     offset  type             widget_type        range_min  range_max  unit  fmt
+        { PROP_STATE,      0,      PAYLOAD_UINT8,   WIDGET_LABEL,      0,         0,         "",   "%s"   },
+        { PROP_BATTERY_V,  2,      PAYLOAD_FLOAT32, WIDGET_BATTERY,    115,       145,       "V",  "%.1f" },
+        { PROP_DOOR_OPEN,  6,      PAYLOAD_UINT8,   WIDGET_INDICATOR,  0,         0,         "",   "%s"   },
+    },
+};
+```
+
 ## Stato pubblicato
 
 - Aperta / Chiusa / In movimento / Errore
 - Tensione batteria di servizio
+- Stato portellone e luci garage
 
 ---
 
