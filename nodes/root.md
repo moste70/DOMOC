@@ -96,14 +96,13 @@ void app_main(void) {
 }
 ```
 
-### 2. Gestione registrazione nodi
+### 2. Gestione registrazione nodi e descriptor
 
 ```c
 void handle_register(mesh_msg_t *msg) {
     reg_payload_t *reg = (reg_payload_t*)msg->payload;
-    
     uint16_t assigned_id;
-    
+
     if (reg->reconnect && nvs_has_node(msg->mac)) {
         // Nodo già conosciuto: conferma ID esistente senza riassegnare
         assigned_id = nvs_get_node_id(msg->mac);
@@ -113,12 +112,29 @@ void handle_register(mesh_msg_t *msg) {
         assigned_id = registry_assign_new_id(msg->mac, reg->name, reg->node_type);
         nvs_save_node(assigned_id, msg->mac, reg->name, reg->node_type);
     }
-    
-    // Invia ACK con ID assegnato
+
     send_register_ack(msg->mac, assigned_id);
-    
-    // Notifica HMI del nuovo nodo (se connesso)
+
+    // Notifica HMI del nodo (se connesso) — descriptor arriverà subito dopo
     forward_to_hmi(MSG_NODE_JOINED, assigned_id);
+}
+
+// Il nodo invia MSG_DESCRIPTOR subito dopo aver ricevuto l'ACK
+void handle_descriptor(mesh_msg_t *msg) {
+    node_info_t *node = registry_find_by_id(msg->node_id);
+    if (!node) return;
+
+    // Copia descriptor nella registry in RAM
+    memcpy(&node->descriptor, msg->payload, sizeof(node_descriptor_t));
+    node->descriptor_valid = true;
+
+    // Persiste descriptor su NVS (namespace "desc", chiave = node_id string)
+    nvs_save_descriptor(node->node_id, &node->descriptor);
+
+    // Forwarda all'HMI se connesso — HMI aggiorna carosello in tempo reale
+    if (hmi_is_connected()) {
+        forward_to_hmi_raw(msg);
+    }
 }
 ```
 
@@ -179,9 +195,16 @@ void mesh_rx_task(void *pvParam) {
                     // Comandi dall'HMI verso nodi: ROOT fa da router
                     route_to_node(&msg);
                     break;
+                case MSG_DESCRIPTOR:
+                    handle_descriptor(&msg);
+                    break;
+                case MSG_DESCRIPTOR_REQ:
+                    // HMI richiede descriptor di un nodo specifico
+                    send_descriptor_to_hmi(msg.target_id);
+                    break;
                 case MSG_STATUS_REQ:
                     if (msg.node_id == NODE_ID_HMI)
-                        send_registry_dump(NODE_ID_HMI); // dump completo alla connessione HMI
+                        send_registry_dump(NODE_ID_HMI); // dump completo + tutti i descriptor
                     break;
             }
         }
@@ -201,13 +224,13 @@ La node registry è salvata su NVS in modo incrementale:
 void nvs_save_node(uint16_t id, uint8_t *mac, char *name, uint8_t type) {
     char key[18];
     mac_to_str(mac, key);  // "AA:BB:CC:DD:EE:FF"
-    
+
     node_nvs_entry_t entry = {
         .node_id   = id,
         .node_type = type,
     };
     strncpy(entry.name, name, 16);
-    
+
     nvs_handle_t handle;
     nvs_open("registry", NVS_READWRITE, &handle);
     nvs_set_blob(handle, key, &entry, sizeof(entry));
@@ -215,16 +238,37 @@ void nvs_save_node(uint16_t id, uint8_t *mac, char *name, uint8_t type) {
     nvs_close(handle);
 }
 
+// Persiste il descriptor di un nodo (namespace "desc", chiave = node_id decimale)
+void nvs_save_descriptor(uint16_t node_id, const node_descriptor_t *desc) {
+    char key[8];
+    snprintf(key, sizeof(key), "%u", node_id);
+
+    nvs_handle_t handle;
+    nvs_open("desc", NVS_READWRITE, &handle);
+    nvs_set_blob(handle, key, desc, sizeof(node_descriptor_t));
+    nvs_commit(handle);
+    nvs_close(handle);
+}
+
 void node_registry_init(void) {
     // Al boot: ricarica tutti i nodi noti da NVS
-    // I nodi si ri-connettono con reconnect=true e trovano già il loro ID
     nvs_iterator_t it = nvs_entry_find("registry", NULL, NVS_TYPE_BLOB);
     while (it != NULL) {
         node_nvs_entry_t entry;
-        nvs_entry_info_t info;
-        nvs_entry_info(it, &info);
-        nvs_get_blob(..., &entry, ...);
-        registry_add_from_nvs(&entry);  // aggiunge con status = OFFLINE
+        nvs_entry_info(it, &(nvs_entry_info_t){});
+        nvs_get_blob(handle, key, &entry, &sz);
+        node_info_t *node = registry_add_from_nvs(&entry);  // status = OFFLINE
+
+        // Ricarica descriptor se precedentemente salvato
+        char dkey[8];
+        snprintf(dkey, sizeof(dkey), "%u", entry.node_id);
+        size_t desc_sz = sizeof(node_descriptor_t);
+        nvs_handle_t dh;
+        if (nvs_open("desc", NVS_READONLY, &dh) == ESP_OK) {
+            if (nvs_get_blob(dh, dkey, &node->descriptor, &desc_sz) == ESP_OK)
+                node->descriptor_valid = true;
+            nvs_close(dh);
+        }
         it = nvs_entry_next(it);
     }
 }

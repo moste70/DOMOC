@@ -77,6 +77,41 @@ Cam Post: OFF
 
 ---
 
+## Payload di stato
+
+```c
+typedef struct __attribute__((packed)) {
+    float    temperature;  // offset 0-3  — °C rilevata
+    float    setpoint;     // offset 4-7  — °C impostata
+    uint8_t  valve_on;     // offset 8    — 1 = valvola aria calda aperta
+    uint8_t  mode_local;   // offset 9    — 1 = controllo locale, 0 = centrale
+    uint8_t  cam_ant;      // offset 10   — 1 = telecamera anteriore accesa
+    uint8_t  cam_post;     // offset 11   — 1 = telecamera posteriore accesa
+    uint8_t  error_code;   // offset 12
+} thermo_loft_status_t;    // 13 byte
+```
+
+## Descriptor HMI
+
+```c
+static const node_descriptor_t THERMO_LOFT_DESCRIPTOR = {
+    .node_icon      = ICON_THERMOMETER,
+    .action_count   = 4,
+    .property_count = 3,
+    .actions = {
+        { ACTION_TEMP_UP,  ICON_ACT_TEMP_UP, "TEMP +"  },
+        { ACTION_TEMP_DN,  ICON_ACT_TEMP_DN, "TEMP -"  },
+        { ACTION_CAM_ON,   ICON_ACT_CAM_ON,  "CAM ON"  },
+        { ACTION_CAM_OFF,  ICON_ACT_CAM_OFF, "CAM OFF" },
+    },
+    .properties = {
+        { PROP_TEMPERATURE, 0, PAYLOAD_FLOAT32, "°C", "%.1f" },
+        { PROP_SETPOINT,    4, PAYLOAD_FLOAT32, "°C", "%.1f" },
+        { PROP_VALVE_ON,    8, PAYLOAD_UINT8,   "",   "%s"   },
+    },
+};
+```
+
 ## Sicurezza e fallback
 
 - In caso di perdita mesh, il nodo continua a funzionare in modalità locale con l'ultimo setpoint e stato telecamere.

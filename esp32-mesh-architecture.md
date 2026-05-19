@@ -210,17 +210,19 @@ typedef struct __attribute__((packed)) {
 
 ```c
 typedef enum {
-    MSG_HEARTBEAT     = 0x01,  // Keepalive periodico nodo → master
-    MSG_REGISTER      = 0x02,  // Nodo nuovo si registra
-    MSG_REGISTER_ACK  = 0x03,  // Master conferma registrazione
-    MSG_COMMAND       = 0x10,  // Master → nodo: esegui azione
-    MSG_COMMAND_ACK   = 0x11,  // Nodo → master: conferma esecuzione
-    MSG_STATUS_REQ    = 0x20,  // Master richiede stato
-    MSG_STATUS_RESP   = 0x21,  // Nodo risponde con stato
-    MSG_ALERT         = 0x30,  // Nodo segnala evento critico
-    MSG_OTA_START     = 0x40,  // Avvio aggiornamento OTA
-    MSG_OTA_CHUNK     = 0x41,  // Chunk firmware
-    MSG_OTA_END       = 0x42,  // Fine OTA, richiesta reboot
+    MSG_HEARTBEAT      = 0x01,  // Keepalive periodico nodo → master
+    MSG_REGISTER       = 0x02,  // Nodo nuovo si registra
+    MSG_REGISTER_ACK   = 0x03,  // Master conferma registrazione
+    MSG_COMMAND        = 0x10,  // Master → nodo: esegui azione
+    MSG_COMMAND_ACK    = 0x11,  // Nodo → master: conferma esecuzione
+    MSG_STATUS_REQ     = 0x20,  // Master richiede stato
+    MSG_STATUS_RESP    = 0x21,  // Nodo risponde con stato
+    MSG_ALERT          = 0x30,  // Nodo segnala evento critico
+    MSG_OTA_START      = 0x40,  // Avvio aggiornamento OTA
+    MSG_OTA_CHUNK      = 0x41,  // Chunk firmware
+    MSG_OTA_END        = 0x42,  // Fine OTA, richiesta reboot
+    MSG_DESCRIPTOR     = 0x50,  // Nodo → ROOT: autodescrizione (node_descriptor_t)
+    MSG_DESCRIPTOR_REQ = 0x51,  // HMI → ROOT: richiesta descriptor per node_id specifico
 } msg_type_t;
 ```
 
@@ -261,27 +263,32 @@ typedef enum {
 
 ```c
 typedef struct {
-    uint16_t  node_id;
-    uint8_t   mac[6];
-    char      name[16];          // Es. "STEP", "GREY_WATER"
-    uint8_t   node_type;         // Enum: SENSOR, ACTUATOR, CONTROLLER, HMI
-    uint8_t   status;            // ONLINE / OFFLINE / ERROR / UPDATING
-    uint32_t  last_seen_ms;
-    int8_t    rssi;
-    uint8_t   payload_cache[32]; // Ultimo stato ricevuto
+    uint16_t         node_id;
+    uint8_t          mac[6];
+    char             name[16];            // Es. "STEP", "GREY_WATER"
+    uint8_t          node_type;           // Enum: SENSOR, ACTUATOR, CONTROLLER, HMI
+    uint8_t          status;              // ONLINE / OFFLINE / ERROR / UPDATING
+    uint32_t         last_seen_ms;
+    int8_t           rssi;
+    uint8_t          payload_cache[32];   // Ultimo stato ricevuto (heartbeat cache)
+    node_descriptor_t descriptor;         // Autodescrizione ricevuta via MSG_DESCRIPTOR
+    bool             descriptor_valid;    // true dopo la ricezione del primo MSG_DESCRIPTOR
 } node_info_t;
 
 #define MAX_NODES 64
 node_info_t nodes[MAX_NODES];    // Persistita su NVS
 ```
 
+> `node_descriptor_t` è definita in `shared/protocol/node_descriptor.h` — inclusa sia dal ROOT che dall'HMI. I nodi funzione la includono solo per definire la propria costante statica.
+
 ### Responsabilità del ROOT
 
 1. **Assegnazione node_id**: risponde ai `MSG_REGISTER` con `MSG_REGISTER_ACK` contenente l'ID assegnato
-2. **Aggiornamento registry**: aggiorna `last_seen` e `payload_cache` ad ogni heartbeat ricevuto
-3. **Rilevamento offline**: marca i nodi OFFLINE dopo 15s, li rimuove dopo 60s
-4. **Forwarding stato all'HMI**: quando l'HMI è connesso, il ROOT gli inoltra tutti i `MSG_ALERT` e le variazioni di stato (subscription-based)
-5. **Persistenza NVS**: salva la registry su flash — al reboot i nodi già registrati non devono ri-registrarsi
+2. **Cache descriptor**: alla ricezione di `MSG_DESCRIPTOR` da un nodo, salva `node_descriptor_t` in `node_info_t.descriptor` e persiste in NVS; forwarda il descriptor all'HMI se connesso
+3. **Aggiornamento registry**: aggiorna `last_seen` e `payload_cache` ad ogni heartbeat ricevuto
+4. **Rilevamento offline**: marca i nodi OFFLINE dopo 15s, li rimuove dopo 60s
+5. **Forwarding stato all'HMI**: quando l'HMI è connesso, il ROOT gli inoltra tutti i `MSG_ALERT`, le variazioni di stato e i `MSG_DESCRIPTOR` dei nuovi nodi (subscription-based)
+6. **Persistenza NVS**: salva la registry + descriptor su flash — al reboot i nodi già registrati non devono ri-registrarsi
 
 ### Comportamento in caso di perdita nodi
 
@@ -310,7 +317,7 @@ node_info_t nodes[MAX_NODES];    // Persistita su NVS
                                          [MESH_RECONNECTING]
 ```
 
-### Auto-registrazione
+### Auto-registrazione e auto-descrizione
 
 Alla connessione mesh, il nodo invia `MSG_REGISTER` al ROOT con:
 - MAC address
@@ -320,7 +327,9 @@ Alla connessione mesh, il nodo invia `MSG_REGISTER` al ROOT con:
 - Capacità (lista funzioni supportate, flag bitfield)
 - Flag `reconnect` (true se il nodo ha già un node_id salvato in NVS)
 
-Il **ROOT** risponde con `MSG_REGISTER_ACK` contenente il `node_id` assegnato (o confermato), che il nodo salva in NVS. Se `reconnect=true`, il ROOT semplicemente aggiorna il `last_seen` e non assegna un nuovo ID.
+Il **ROOT** risponde con `MSG_REGISTER_ACK` contenente il `node_id` assegnato (o confermato), che il nodo salva in NVS. Se `reconnect=true`, il ROOT aggiorna il `last_seen` e non assegna un nuovo ID.
+
+Subito dopo aver ricevuto l'ACK, il nodo invia `MSG_DESCRIPTOR` al ROOT con la propria `node_descriptor_t` statica — icone, azioni e proprietà esposte all'HMI. Il ROOT memorizza il descriptor in `node_info_t.descriptor` e lo persiste in NVS. Se l'HMI è già connesso, il ROOT forwarda immediatamente il `MSG_DESCRIPTOR` all'HMI che aggiunge la nuova icona al carosello senza riavvio.
 
 ### Gestione comandi
 
@@ -382,10 +391,12 @@ void handle_command(mesh_msg_t *msg) {
 
 ### Struttura cartelle firmware
 
-```
+```text
 firmware/
 ├── shared/                     # Codice comune a tutti i nodi
 │   ├── protocol/               # Strutture messaggi, enum, CRC
+│   │   ├── mesh_protocol.h     # mesh_msg_t, msg_type_t, cmd_payload_t ...
+│   │   └── node_descriptor.h   # node_descriptor_t, hmi_icon_t, property_id_t
 │   ├── mesh_manager/           # Wrapper ESP-Mesh, init, callbacks
 │   ├── nvs_store/              # Astrazione NVS flash
 │   └── node_type.h             # Enum tipi nodo, ID riservati

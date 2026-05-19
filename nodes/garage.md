@@ -113,10 +113,44 @@ La posizione della valvola può essere rilevata tramite finecorsa o sensore di c
 
 ---
 
+## Payload di stato
+
+```c
+typedef struct __attribute__((packed)) {
+    uint8_t  state;       // offset 0 — CLOSED/OPEN/OPENING/CLOSING/ERROR
+    uint8_t  error_code;  // offset 1
+    float    battery_v;   // offset 2-5 — tensione batteria servizio (V)
+    uint8_t  door_open;   // offset 6 — 1 = portellone garage aperto
+    uint8_t  light_on;    // offset 7 — 1 = luci garage accese
+} garage_status_t;        // 8 byte
+```
+
+## Descriptor HMI
+
+```c
+static const node_descriptor_t GARAGE_DESCRIPTOR = {
+    .node_icon      = ICON_VALVE_GREY,
+    .action_count   = 4,
+    .property_count = 3,
+    .actions = {
+        { ACTION_OPEN,      ICON_ACT_OPEN,      "APRI"     },
+        { ACTION_CLOSE,     ICON_ACT_CLOSE,     "CHIUDI"   },
+        { ACTION_LIGHT_ON,  ICON_ACT_LIGHT_ON,  "LUCE ON"  },
+        { ACTION_LIGHT_OFF, ICON_ACT_LIGHT_OFF, "LUCE OFF" },
+    },
+    .properties = {
+        { PROP_STATE,      0, PAYLOAD_UINT8,   "",  "%s"   },
+        { PROP_BATTERY_V,  2, PAYLOAD_FLOAT32, "V", "%.1f" },
+        { PROP_DOOR_OPEN,  6, PAYLOAD_UINT8,   "",  "%s"   },
+    },
+};
+```
+
 ## Stato pubblicato
 
 - Aperta / Chiusa / In movimento / Errore
 - Tensione batteria di servizio
+- Stato portellone e luci garage
 
 ---
 

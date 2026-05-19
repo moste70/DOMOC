@@ -1,134 +1,151 @@
-# DomoC — Nodo HMI (Display portatile)
+# DomoC — Nodo HMI (Knob Controller)
 
 ---
 
 ## Descrizione
 
-Il nodo HMI è il **pannello di controllo portatile** del sistema DomoC. È un nodo mesh come tutti gli altri: si connette e disconnette liberamente senza impatto sulla rete o sui nodi funzione.
+Il nodo HMI è il **controller portatile a manopola** del sistema DomoC. È un nodo mesh come tutti gli altri: si connette e disconnette liberamente senza impatto sulla rete o sui nodi funzione.
 
 Caratteristiche chiave:
-- **Portatile**: alimentato da batteria LiPo interna, con carica opzionale dal bus 12V del camper
+
+- **Compatto e portatile**: scocca CNC in metallo (66×22mm), batteria LiPo 800mAh integrata, carica via USB-C
 - **Non è il root della mesh**: la mesh funziona correttamente anche con HMI spento o fuori range
 - **Solo monitor e controllo manuale**: non esegue logica automatica — quella vive nei nodi
-- **Multi-istanza**: possono coesistere più nodi HMI sulla stessa mesh (es. uno fisso nel camper, uno portatile)
+- **Navigazione a icone**: rotazione encoder scorre un carosello di icone (una per nodo/funzione), push su encoder o tocco display entra nell'elemento selezionato — nessun menu testuale
+- **Multi-istanza**: possono coesistere più nodi HMI sulla stessa mesh
 
-> **Principio**: l'HMI vede tutto ciò che accade sulla mesh, può dare comandi manuali all'utente, ma non è mai nel percorso critico di nessuna decisione automatica.
+> **Principio**: l'HMI vede tutto ciò che accade sulla mesh, può dare comandi manuali, ma non è mai nel percorso critico di nessuna decisione automatica.
 
 ---
 
 ## Hardware
 
-### Microcontrollore
+### Modulo base
 
-- **ESP32-S3** — scelto per:
-  - CPU dual-core 240 MHz (UI su Core 1, mesh su Core 0)
-  - PSRAM esterna 8MB (necessaria per LVGL con display ad alta risoluzione)
-  - USB-C nativa (USB OTG FS) — flash/debug senza adattatori
-  - Wi-Fi 802.11 b/g/n per ESP-Mesh
+### Waveshare ESP32-S3-Knob-Touch-LCD-1.8
 
-### Alimentazione — tripla sorgente
+Modulo tutto-in-uno con doppio MCU, display rotondo, encoder doppio, audio, vibrazione e batteria integrati.
 
-```
-[Bus 12V camper] ──→ [Buck 12V→5V, 1A] ──→ ┐
-                                             ├──→ [Caricabatteria LiPo] ──→ [Batteria LiPo 3.7V]
-[USB-C 5V esterno] ──────────────────────────┘                                      │
-                                                                                     ▼
-                                                                          [Boost/LDO 3.7→3.3V]
-                                                                                     │
-                                                                                ESP32-S3 + Display
-```
+### Architettura dual-MCU
 
-- **Batteria LiPo**: 2000–3000 mAh — autonomia stimata 6–12 ore con display attivo, 24–48 ore in standby
-- **Carica da 12V camper**: quando il camper è alimentato, la batteria si ricarica automaticamente
-- **Carica da USB-C**: tramite alimentatore esterno o PC
-- **Chip di gestione batteria**: TP4056 (carica) + DW01 (protezione) oppure BQ24079 (soluzione integrata)
-- **Indicatore batteria**: lettura ADC sul pin VBAT diviso per 2 — percentuale visualizzata in header display
-- **Protezione sottotensione**: spegnimento automatico sotto 3.2V per preservare la batteria
+Il modulo integra due microcontrollori che comunicano via UART interno:
 
-#### Moduli di ricarica e protezione batteria
+| MCU | Ruolo nel progetto |
+| --- | --- |
+| **ESP32-S3R8** (LX7 dual-core 240MHz, 8MB PSRAM) | MCU principale: ESP-Mesh, display QSPI, touch I2C, audio I2S, LVGL |
+| **ESP32-U4WDH** (LX6 dual-core 240MHz, 4MB Flash) | MCU secondario: gestione encoder dedicato, relay eventi a ESP32-S3 via UART |
 
-**Opzione 1: TP4056 + DW01** (soluzione separata, consigliata per flessibilità)
-- **TP4056**: modulo di ricarica LiPo completo a 1A (~€2-3)
-  - Ingresso: 5V USB-C o 12V da buck converter
-  - Protezione da sovraccarica, scarica rapida sicura
-  - LED stato ricarica
-  
-- **DW01-A**: protezione batteria (sottotensione + sovracorrente) (~€1-2)
-  - Spegne automaticamente sotto 2.4V
-  - Protegge da corto circuito
-
-*Pro*: Moduli testate, economiche, standard nel DIY  
-*Contro*: Due componenti separate da gestire
-
-**Opzione 2: BQ24079** (soluzione integrata, moderna)
-- IC unico con gestione completa:
-  - Ricarica LiPo da 5V/12V
-  - Protezione integrata
-  - Massima semplicità PCB
-  - I2C opzionale per monitor remoto
-
-*Pro*: Un solo componente, minore footprint, migliore integrazione  
-*Contro*: Leggermente più costoso (€5-8)
-
-**Opzione 3: TP4056 + MB8365** (alternativa con separazione input)
-- Se vuoi ricaricare da **entrambe le fonti** (12V camper + USB-C esterno) contemporaneamente:
-  - **TP4056** con **MB8365** (diodo OR-ing)
-  - Seleziona automaticamente la fonte di potenza migliore
-
-*Pro*: Massima flessibilità di alimentazione  
-*Contro*: Più componenti e complessità
-
-**Configurazione consigliata per DOMOC HMI**:
-```
-Buck 12V→5V 1A + USB-C 5V
-        │
-        └──→ [TP4056] ──→ [DW01] ──→ [Batteria LiPo 3.7V]
-                                           │
-                                           └→ [Boost/LDO 3.7→3.3V] → ESP32-S3
-```
-
-**Alternativa all-in-one**: DFRobot BQ24075 Charging Module
-- Include TP4056 + protezione DW01 + step-up per 3.3V
-- PCB compatta con tutte le capacità necessarie (~€8-10)
-- Riferimento circuito e discussione TI: https://e2e.ti.com/support/power-management-group/power-management/f/power-management-forum/707357/bq24075-input-voltage-drops-by-500mv-when-battery-is-inserted
+La mesh ESP-Mesh gira esclusivamente sull'**ESP32-S3** (Wi-Fi integrato). L'ESP32 secondario è trasparente alla rete — trasmette solo eventi encoder.
 
 ### Display
 
-- **Dimensioni**: 3.5"–4.3" (480×320 o 800×480)
-- **Interfaccia**: SPI su bus dedicato (ILI9488 o ST7796) — **bus SPI separato dalla SD card**
-- **Touch**: capacitivo (FT5336 o GT911, I2C) — preferibile al resistivo per usabilità in ambiente camper
-- **Backlight**: PWM dimmerabile via LEDC — si riduce al 30% dopo 30s, si spegne dopo 60s
-- **Riattivazione**: qualsiasi tocco, rotazione encoder, o ricezione di un `MSG_ALERT` dalla mesh
+| Parametro | Valore |
+| --- | --- |
+| **Dimensione** | 1.8" IPS rotondo |
+| **Risoluzione** | 360×360 pixel, 262K colori |
+| **Driver** | ST77916 |
+| **Interfaccia** | QSPI (Quad SPI) — 4 bit dati in parallelo |
+| **Backlight** | GPIO47, PWM dimmerabile |
 
-### Input fisico
+> L'interfaccia QSPI garantisce bandwidth sufficiente per animazioni LVGL fluide a 360×360. Il driver ST77916 è supportato nell'`esp-bsp` Waveshare (componente `esp_lcd_st77916`).
 
-- **Encoder rotativo** con pulsante integrato (navigazione menu senza touch — utile con guanti o vibrazioni)
-- **Pulsante fisico "CHIUDI TUTTO"**: comando rapido pre-partenza — invia ACTION_CLOSE broadcast a tutti gli attuatori con conferma display
+### Touch
 
-### Connettività
+- **Controller**: CST816, I2C, indirizzo `0x15`
+- **Reset timing**: HIGH 10ms → LOW 10ms → HIGH 50ms (sequenza specifica per inizializzazione affidabile)
+- Usato per gesture swipe di riserva; la navigazione principale è via encoder
 
-| Interfaccia | Bus | Uso |
-|---|---|---|
-| Wi-Fi (ESP-Mesh) | — | Comunicazione con tutti i nodi e ROOT |
-| Display SPI | SPI0 | Rendering UI |
-| MicroSD | SPI1 (separato) | Log eventi persistente (opzionale) |
-| Touch I2C | I2C0 | Input utente |
-| USB-C | USB OTG | Flash/debug + carica batteria |
-| UART | Header pin | Debug seriale in campo |
+### Input fisici
+
+| Gesto | Effetto |
+| --- | --- |
+| **Rotazione encoder primario** (ESP32-S3) | Scorre il carosello di icone — sinistra/destra |
+| **Push encoder primario** | Entra nell'icona selezionata (nodo o azione) |
+| **Push lungo encoder** (>800ms) | Torna al livello superiore (azioni → nodi, nodi → home) |
+| **Tocco display** | Equivalente a push encoder — seleziona/entra |
+| **Encoder secondario** (ESP32-U4WDH → UART) | Regolazione backlight; in futuro configurabile |
+| **Power button** | Accensione/spegnimento con salvataggio stato su NVS |
+
+### Audio e feedback
+
+- **DAC audio**: PCM5100A (I2S), jack 3.5mm — toni di conferma differenziati per severità alert
+- **Microfono MEMS**: digitale, per visualizzazione spettro (funzione secondaria)
+- **Motore vibrazione**: DRV2605 via I2C — feedback aptico su conferma comando e alert critico
+
+### Alimentazione
+
+```
+[USB-C 5V] ──→ [Charger LiPo integrato] ──→ [Batteria LiPo 800mAh PH1.25]
+                                                         │
+                                              [Regolatore 3.3V integrato]
+                                                         │
+                                           ESP32-S3 + Display + Periferiche
+```
+
+- **Batteria**: 800mAh — autonomia stimata 4–8h display attivo, 12–20h in standby con backlight spento
+- **Carica**: solo via USB-C 5V (modulo già integrato nel board)
+- **Alimentazione da camper**: collegare USB-C a un buck 12V→5V sul bus 12V del camper per ricaricare automaticamente quando il veicolo è alimentato
+- **Protezione sottotensione**: gestita dal charger integrato del modulo
+
+### Memoria e storage
+
+- **Flash**: 16MB SPI (su ESP32-U4WDH, condivisa)
+- **PSRAM**: 8MB (integrata in ESP32-S3R8) — necessaria per i frame buffer LVGL a 360×360
+- **MicroSD**: slot integrato — log eventi persistente
 
 ### GPIO principali (ESP32-S3)
 
 | GPIO | Funzione |
-|---|---|
-| GPIO5–9 | Display SPI (CLK, MOSI, CS, DC, RST) |
-| GPIO15 | Display backlight PWM |
-| GPIO10–11 | SD card SPI |
-| GPIO3–4 | Touch I2C (SDA, SCL) |
-| GPIO40–41 | Encoder rotativo (A, B) |
-| GPIO42 | Encoder pulsante |
-| GPIO43 | Pulsante "CHIUDI TUTTO" |
-| GPIO1 | ADC batteria (VBAT/2) |
-| GPIO2 | Presenza 12V (optoisolatore) |
+| --- | --- |
+| GPIO13 | Display QSPI CLK |
+| GPIO14 | Display QSPI CS |
+| GPIO15 | Display QSPI D0 |
+| GPIO16 | Display QSPI D1 |
+| GPIO17 | Display QSPI D2 |
+| GPIO18 | Display QSPI D3 |
+| GPIO21 | Display RST |
+| GPIO47 | Display backlight PWM |
+| SDA/SCL* | Touch CST816 I2C (addr 0x15) |
+| I2S* | Audio PCM5100A |
+| I2C* | DRV2605 vibrazione |
+| UART* | Comunicazione con ESP32 secondario |
+
+> I GPIO contrassegnati con * sono da verificare sullo schematico ufficiale Waveshare. I GPIO del display sono confermati dalla community Tasmota.
+
+---
+
+## Integrazione software — Driver display
+
+Il driver ST77916 via QSPI non è incluso nell'ESP-IDF standard. Usare il componente Waveshare:
+
+```cmake
+# idf_component.yml
+dependencies:
+  espressif/esp_lcd_st77916: "^1.0.0"
+```
+
+Inizializzazione LVGL con QSPI:
+
+```c
+esp_lcd_panel_io_handle_t io_handle;
+esp_lcd_panel_handle_t panel_handle;
+
+esp_lcd_panel_io_spi_config_t io_config = {
+    .dc_gpio_num      = -1,          // QSPI non usa DC pin
+    .cs_gpio_num      = GPIO_LCD_CS,
+    .pclk_hz          = 80 * 1000 * 1000,
+    .lcd_cmd_bits     = 32,
+    .lcd_param_bits   = 8,
+    .spi_mode         = 0,
+    .trans_queue_depth = 10,
+    .flags.quad_mode  = true,       // QSPI abilitato
+};
+
+// Reset con timing specifico CST816
+gpio_set_level(GPIO_TOUCH_RST, 1); vTaskDelay(pdMS_TO_TICKS(10));
+gpio_set_level(GPIO_TOUCH_RST, 0); vTaskDelay(pdMS_TO_TICKS(10));
+gpio_set_level(GPIO_TOUCH_RST, 1); vTaskDelay(pdMS_TO_TICKS(50));
+```
 
 ---
 
@@ -136,255 +153,337 @@ Buck 12V→5V 1A + USB-C 5V
 
 ### 1. Connessione alla mesh
 
-L'HMI si connette come **nodo normale** — non come root:
-
 ```c
-// Configurazione mesh HMI — NON è root
 esp_mesh_cfg_t cfg = {
-    .channel = MESH_CHANNEL,
-    .mesh_id = MESH_ID,
+    .channel              = MESH_CHANNEL,
+    .mesh_id              = MESH_ID,
     .mesh_ap.max_connection = 0,  // HMI non accetta figli
-    .mesh_type = MESH_NODE,       // nodo foglia
+    .mesh_type            = MESH_NODE,
 };
 esp_mesh_fix_root(false);  // mai root
 ```
 
-Alla connessione, invia `MSG_REGISTER` al ROOT con `node_type = HMI`.
-Subito dopo richiede un dump completo della node registry al ROOT (`MSG_STATUS_REQ` broadcast).
+Alla connessione invia `MSG_REGISTER` al ROOT con `node_type = HMI`, poi richiede dump completo registry (`MSG_STATUS_REQ` broadcast).
 
-### 2. Sincronizzazione node registry
+### 2. Sincronizzazione node registry e descriptor
+
+Alla connessione, l'HMI richiede il dump completo al ROOT. Il ROOT risponde con tutti i `node_info_t` e un `MSG_DESCRIPTOR` per ogni nodo — l'HMI costruisce il carosello automaticamente senza conoscere i tipi di nodo in anticipo.
 
 ```c
-// Alla ricezione della registry dal ROOT
+// Ricezione registry dump + descriptor dal ROOT
 void on_registry_dump(registry_dump_t *dump) {
     for (int i = 0; i < dump->count; i++) {
         update_local_node(dump->nodes[i]);
-        refresh_ui_tile(dump->nodes[i].node_id);
+        // I descriptor arrivano come MSG_DESCRIPTOR separati subito dopo
     }
-    ui_show_dashboard();
 }
 
-// Aggiornamenti incrementali durante l'uso
+// Ricezione descriptor per un nodo (sia al dump iniziale che per nuovi nodi live)
+void on_descriptor_received(mesh_msg_t *msg) {
+    node_info_t *node = local_registry_find(msg->node_id);
+    if (!node) return;
+    memcpy(&node->descriptor, msg->payload, sizeof(node_descriptor_t));
+    node->descriptor_valid = true;
+    ui_carousel_add_or_update(node);  // aggiunge/aggiorna icona nel carosello
+}
+
 void on_node_status_update(node_status_t *update) {
     update_local_node_by_id(update->node_id, update->status, update->payload);
-    refresh_ui_tile(update->node_id);  // aggiorna solo il tile coinvolto
+    ui_carousel_refresh_icon(update->node_id);   // aggiorna colore stato icona
+    if (ui_get_selected_node() == update->node_id)
+        ui_detail_refresh(update->node_id);       // aggiorna schermata dettaglio se visibile
 }
 ```
 
-### 3. Ricezione alert
+### 3. Costruzione dinamica del carosello
 
-Gli alert (`MSG_ALERT`) arrivano dalla mesh e vengono gestiti passivamente:
+Il carosello è interamente derivato dai descriptor ricevuti — nessun nodo è hardcodato nell'HMI:
+
+```c
+void ui_carousel_add_or_update(node_info_t *node) {
+    if (!node->descriptor_valid) {
+        // Nodo senza descriptor: icona generica, nessuna azione
+        carousel_set_node(node->node_id, ICON_GENERIC, NULL, 0);
+        return;
+    }
+    carousel_set_node(
+        node->node_id,
+        node->descriptor.node_icon,
+        node->descriptor.actions,
+        node->descriptor.action_count
+    );
+    // Ricostruisce Livello 1 (azioni) per questo nodo
+    carousel_set_actions(node->node_id,
+        node->descriptor.actions,
+        node->descriptor.action_count);
+}
+
+// Lettura proprietà dal payload di stato usando il descriptor
+void ui_detail_refresh(uint16_t node_id) {
+    node_info_t *node = local_registry_find(node_id);
+    if (!node || !node->descriptor_valid) return;
+
+    for (int p = 0; p < node->descriptor.property_count; p++) {
+        property_descriptor_t *pd = &node->descriptor.properties[p];
+        char buf[16];
+        // Estrae il valore grezzo dal payload_cache usando offset e tipo
+        float val = extract_payload_value(
+            node->payload_cache, pd->payload_offset, pd->payload_type);
+        snprintf(buf, sizeof(buf), pd->fmt, val);
+        ui_detail_set_row(p, buf, pd->unit);
+    }
+}
+```
+
+### 4. Ricezione alert
 
 ```c
 void on_mesh_alert(mesh_msg_t *msg) {
     alert_payload_t *alert = (alert_payload_t*)msg->payload;
 
-    // 1. Aggiorna stato locale del nodo mittente
     update_local_node_status(msg->node_id, alert->new_state);
+    ui_push_alert_overlay(alert->severity, alert->message);
 
-    // 2. Mostra notifica sul display
-    ui_push_notification(alert->severity, alert->message);
-
-    // 3. Se critico: accende backlight e buzzer
     if (alert->severity == ALERT_CRITICAL) {
         backlight_set(100);
-        buzzer_beep(3);
+        drv2605_play_effect(DRV2605_EFFECT_STRONG_BUZZ);
+        pcm5100a_play_tone(TONE_ALERT_CRITICAL);
+    } else {
+        drv2605_play_effect(DRV2605_EFFECT_SOFT_BUMP);
+        pcm5100a_play_tone(TONE_ALERT_WARNING);
     }
 
-    // 4. Logga su SD
     sd_log_event(msg->node_id, alert->message, get_timestamp());
 }
 ```
 
-> L'HMI **non reagisce** agli alert con comandi automatici. Visualizza, suona, logga. Punto.
+> L'HMI **non reagisce** agli alert con comandi automatici. Visualizza, vibra, suona, logga. Punto.
 
-### 4. Invio comandi manuali
+### 5. Invio comandi manuali
 
-Solo da interazione esplicita dell'utente:
+Solo da conferma esplicita (click encoder sul pulsante azione):
 
 ```c
 void on_user_command(uint16_t target_node_id, uint8_t action) {
     mesh_msg_t msg = {
-        .version    = PROTOCOL_VERSION,
-        .msg_type   = MSG_COMMAND,
-        .node_id    = NODE_ID_HMI,
-        .target_id  = target_node_id,
-        .seq_num    = next_seq_num(),
+        .version   = PROTOCOL_VERSION,
+        .msg_type  = MSG_COMMAND,
+        .node_id   = NODE_ID_HMI,
+        .target_id = target_node_id,
+        .seq_num   = next_seq_num(),
     };
     cmd_payload_t cmd = { .action = action };
     memcpy(msg.payload, &cmd, sizeof(cmd));
     msg.payload_len = sizeof(cmd);
     msg.crc16 = crc16_calc(&msg);
 
-    enqueue_mesh_tx(&msg);  // retry con backoff gestito da mesh_tx_task
+    drv2605_play_effect(DRV2605_EFFECT_CLICK);  // feedback aptico immediato
+    enqueue_mesh_tx(&msg);
 }
 ```
 
-### 5. Gestione sorgente alimentazione
+### 6. Comunicazione con ESP32 secondario
+
+L'ESP32-U4WDH invia eventi encoder via UART all'ESP32-S3:
+
+```c
+typedef struct {
+    uint8_t  encoder_id;   // 0 = primario, 1 = secondario
+    int8_t   delta;        // +1 orario, -1 antiorario, 0 = click
+} encoder_event_t;
+
+void uart_rx_task(void *pvParam) {
+    encoder_event_t evt;
+    while (1) {
+        if (uart_read_bytes(UART_NUM_1, &evt, sizeof(evt), portMAX_DELAY) == sizeof(evt)) {
+            xQueueSend(encoder_event_queue, &evt, 0);
+        }
+    }
+}
+```
+
+### 7. Gestione batteria
 
 ```c
 void power_monitor_task(void *pvParam) {
     while (1) {
-        bool v12_present = gpio_get_level(GPIO_V12_DETECT);
-        float vbat = adc_read_vbat();  // mV
+        float vbat     = adc_read_vbat();
         uint8_t batt_pct = vbat_to_percent(vbat);
 
-        if (!v12_present && batt_pct < 15) {
-            ui_show_banner(BANNER_BATT_LOW, "Batteria HMI bassa — collegare al 12V");
-            buzzer_beep(1);
+        ui_update_battery_indicator(batt_pct);
+
+        if (batt_pct < 15) {
+            ui_push_alert_overlay(ALERT_WARNING, "Batteria HMI bassa — collegare USB-C");
+            drv2605_play_effect(DRV2605_EFFECT_SOFT_BUZZ);
         }
-        if (!v12_present && vbat < 3200) {
-            ui_show_banner(BANNER_SHUTDOWN, "Batteria critica — spegnimento");
+        if (vbat < 3200) {
+            ui_show_shutdown_screen();
             vTaskDelay(pdMS_TO_TICKS(3000));
-            power_off();  // salva stato su NVS e spegne
+            power_off();  // salva stato su NVS, spegne
         }
 
-        ui_update_header_battery(batt_pct, v12_present);
-        vTaskDelay(pdMS_TO_TICKS(10000));  // check ogni 10s
+        vTaskDelay(pdMS_TO_TICKS(30000));  // check ogni 30s
     }
 }
 ```
 
 ---
 
-## Interfaccia utente — Schermate
+## Interfaccia utente — Carosello di icone (360×360 rotondo)
 
-### Schermata 1 — Dashboard principale
+L'intera navigazione si basa su **due livelli di carosello**. Non esistono menu testuali.
 
+```text
+  LIVELLO 0 — Carosello nodi          LIVELLO 1 — Carosello azioni
+  (rotazione encoder)                 (push → entra, rotazione → scorre)
+
+  ┌──────────────────┐                ┌──────────────────┐
+ / 🔋78%       🔗5n  \              /        STEP        \
+│                    │              │                     │
+│  [🚰]  [🚪]  [🌡] │   ──push──▶ │  [🔓]  [🔒]  [ℹ]  │
+│        ↑↑↑         │              │         ↑↑↑          │
+│       STEP         │              │        APRI          │
+│      CHIUSO        │              │                     │
+ \                  /                \  push=ESEGUI      /
+  └──────────────────┘                └──────────────────┘
+                                             │
+                                        push lungo
+                                             │
+                                          ◀ INDIETRO
 ```
-┌──────────────────────────────────────────────────┐
-│  DomoC    🔋78%  🔌12V  RSSI:-42  ROOT:🟢 14:32 │
-├──────────────┬───────────────────────────────────┤
-│ 🟢 STEP      │ 🟢 GREY_WATER                    │
-│  Chiuso      │  Chiusa                           │
-├──────────────┼───────────────────────────────────┤
-│ 🟢 FRESH     │ 🟢 FRONT_DOOR                    │
-│  Chiusa      │  Chiusa                           │
-├──────────────┼───────────────────────────────────┤
-│ 🟢 T.BUNK    │ 🟢 T.LOFT      │ 🟢 T.KITCHEN   │
-│  19.2°C      │  21.0°C        │  20.5°C         │
-├──────────────┴───────────────────────────────────┤
-│ 🌡 12.4°C  💧 68%  🔋Mot:12.8V  Serv:12.6V     │
-│                              [LOG] [⚙] [CHIUDI◼]│
-└──────────────────────────────────────────────────┘
+
+**Rendering carosello**: l'icona centrale è a piena dimensione (~110×110px), le icone adiacenti sono visibili parzialmente ai bordi e dimmate al 40% — sfruttano la forma circolare del display. Lo stato del nodo colora l'icona: verde = ok, arancio = warning, rosso = errore/offline.
+
+### Livello 0 — Carosello nodi
+
+```text
+           ╭───────────────────╮
+          /  🔋78%       🔗5n  \
+         │                      │
+         │  ░[🚰]░  [🚪]  ░[🌡]░│
+         │          ↑            │
+         │        STEP           │
+         │       CHIUSO          │
+         │       14:30           │
+          \                     /
+           ╰───────────────────╯
 ```
 
-- **Header**: batteria HMI, sorgente alimentazione, RSSI verso mesh, stato ROOT
-- Icona nodo: 🟢 online / 🟡 warning / 🔴 offline / ⚫ non registrato
-- **[CHIUDI◼]**: pulsante "Chiudi tutto" — conferma richiesta prima dell'invio
+- **Rotazione encoder**: scorre le icone (una per nodo registrato + icone sistema in fondo)
+- **Icona centrale**: nodo selezionato — nome e stato mostrati sotto l'icona
+- **Push encoder / tocco display**: entra nel Livello 1 (carosello azioni) del nodo
+- **Header** (arco superiore): batteria HMI a sinistra, numero nodi mesh a destra
+- Se lo stato di un nodo cambia mentre è visibile, l'icona aggiorna colore senza ridisegnare tutto
 
-### Schermata 2 — Dettaglio nodo
+### Livello 1 — Carosello azioni nodo
 
-- Stato corrente con icona e timestamp ultimo aggiornamento
-- Pulsanti azione contestuali (APRI/CHIUDI per attuatori, SET per termostati)
-- Statistiche: RSSI, hop count, uptime, versione firmware
-- Storico eventi recenti del nodo (ultimi 5)
+```text
+           ╭───────────────────╮
+          /        STEP         \
+         │                      │
+         │  ░[🔓]░  [🔒]  ░[ℹ]░ │
+         │          ↑            │
+         │        CHIUDI         │
+         │                      │
+          \  push=ESEGUI        /
+           ╰───────────────────╯
+```
 
-### Schermata 3 — Allarmi e log
+- **Rotazione encoder**: scorre le azioni disponibili per il nodo
+- **Push encoder / tocco display**: esegue l'azione (con feedback aptico DRV2605 + conferma visiva 1s)
+- **Push lungo encoder** (>800ms): torna al Livello 0 senza eseguire nulla
+- Le azioni variano per tipo nodo:
 
-- Lista eventi con timestamp (ultimi 100, scroll)
-- Filtro per severità e per nodo
-- Possibilità di esportare log su SD
+| Tipo nodo | Azioni disponibili |
+| --- | --- |
+| Attuatore (STEP, valvole, porta) | 🔓 APRI — 🔒 CHIUDI — ℹ INFO |
+| Sensore (temperatura, livello) | ℹ INFO — 📊 STORICO |
+| Sistema (ROOT, mesh) | 📡 TOPOLOGIA — 📋 LOG |
 
-### Schermata 4 — Topologia mesh
+### Icone sistema nel carosello (in coda ai nodi)
 
-- Albero testuale della rete con ROOT in cima
-- Per ogni nodo: hop count, RSSI verso parent, stato
-- Indica visivamente se l'HMI è connesso come foglia
+Due icone speciali sempre presenti in fondo al carosello principale:
 
-### Schermata 5 — Configurazione
+| Icona | Funzione |
+| --- | --- |
+| **📡 MESH** | Mostra topologia: albero ROOT→nodi, RSSI, hop count |
+| **📋 LOG** | Scorre gli ultimi 100 eventi (rotazione encoder = scroll) |
 
-- Soglie allarmi batteria (modificabili e inviabili ai nodi)
-- Timeout backlight
-- Nomi personalizzati nodi
-- Avvio OTA su nodo selezionato (invia richiesta al ROOT)
+### Alert overlay — priorità massima
+
+```text
+           ╭───────────────────╮
+          /      ⚠  (1/2)       \
+         │                      │
+         │        [🚨]           │
+         │    GREY_WATER         │
+         │  Valvola bloccata     │
+         │     14:35:22          │
+          \   push = OK         /
+           ╰───────────────────╯
+```
+
+- Si sovrappone a qualsiasi livello — congela il carosello sottostante
+- Backlight 100%, vibrazione DRV2605, tono audio differenziato per severità
+- Alert multipli: indicatore `(1/2)`, push scorre al successivo, push sull'ultimo chiude
+- Se arriva un alert mentre si sta eseguendo un comando: l'overlay appare dopo la conferma del comando
+
+### Conferma comando (overlay temporaneo 1.5s)
+
+```text
+           ╭───────────────────╮
+          /                     \
+         │        [✓]            │
+         │      Inviato          │
+         │       APRI            │
+         │       STEP            │
+          \                     /
+           ╰───────────────────╯
+```
+
+Appare dopo ogni push su un'azione, poi svanisce automaticamente riportando al Livello 1.
 
 ---
 
-## Display HMI scelto
-
-Per l'interfaccia HMI viene utilizzato il display **ELECROW ESP32 7" HMI RGB TFT LCD Touch Screen**:
-
-- **Modello:** ELECROW ESP32 7" HMI RGB TFT LCD Touch Screen
-- **Processore:** ESP32-S3-WROOM-1-N4R8, dual-core LX6 fino a 240 MHz
-- **Risoluzione:** 800×480 pixel, formato 16:9
-- **Touch:** Capacitivo, multi-touch
-- **Compatibilità:** Arduino IDE, ESP-IDF, PlatformIO, MicroPython, LVGL
-- **Connettività:** WiFi, Bluetooth integrati
-- **Espandibilità:** Slot TF card, interfacce USB, speaker, batteria
-- **Alimentazione:** 5V (USB o batteria)
-- **Applicazioni:** HMI, domotica, automazione, dashboard, IoT
-- **Note:** Non include case, supporto tecnico e tutorial disponibili
-
-Questa scelta garantisce un'interfaccia moderna, ampia compatibilità software e hardware, e facilità di sviluppo per dashboard e controlli camper.
-
----
-
-## Task FreeRTOS
+## Task FreeRTOS (ESP32-S3)
 
 | Task | Core | Priorità | Stack | Funzione |
-|---|---|---|---|---|
+| --- | --- | --- | --- | --- |
 | `mesh_rx_task` | 0 | 5 | 4 KB | Ricezione messaggi mesh, dispatch a coda interna |
 | `mesh_tx_task` | 0 | 5 | 4 KB | Invio comandi manuali, ACK, retry |
 | `registry_sync_task` | 0 | 4 | 3 KB | Sync registry da ROOT, aggiornamenti incrementali |
-| `alert_display_task` | 0 | 4 | 3 KB | Ricezione MSG_ALERT → notifica UI → buzzer → log SD |
-| `display_task` | 1 | 3 | 12 KB | Rendering LVGL, gestione touch/encoder, coda UI |
-| `power_monitor_task` | 0 | 3 | 2 KB | ADC batteria, presenza 12V, banner e spegnimento |
+| `alert_task` | 0 | 4 | 3 KB | MSG_ALERT → overlay UI → vibrazione → audio → log SD |
+| `uart_rx_task` | 0 | 4 | 2 KB | Ricezione eventi encoder da ESP32 secondario |
+| `encoder_task` | 1 | 4 | 2 KB | Lettura encoder primario + dispatch coda UI |
+| `display_task` | 1 | 3 | 16 KB | Rendering LVGL, touch CST816, coda UI thread-safe |
+| `power_monitor_task` | 0 | 3 | 2 KB | ADC batteria, banner e spegnimento |
 | `sd_logger_task` | 0 | 1 | 3 KB | Scrittura asincrona log su SD (ring buffer interno) |
 
-> `display_task` su **Core 1** — non interferisce con la mesh (Core 0).
-> Tutti gli aggiornamenti LVGL passano per una coda UI thread-safe — nessun task tocca oggetti LVGL direttamente.
+> `display_task` e `encoder_task` su **Core 1** — non interferiscono con la mesh (Core 0).
+> Stack `display_task` a 16 KB: LVGL con double-buffer QSPI a 360×360 richiede più stack del normale.
 
 ---
 
 ## Comportamento in assenza di connessione mesh
 
-Se l'HMI perde la mesh (es. portato fuori range):
+Se l'HMI perde la mesh (fuori range):
 
-1. Header mostra `MESH: ✗ — offline` con RSSI -
-2. I dati visualizzati rimangono congelati all'ultimo stato noto (con timestamp "ultimo aggiornamento: Xs fa")
-3. I comandi manuali vengono rifiutati con messaggio "Connessione mesh assente"
-4. Il display si dimezza automaticamente per risparmiare batteria
-5. Alla riconnessione: `registry_sync_task` richiede dump completo al ROOT e aggiorna tutta la UI
+1. Header mostra icona mesh barrata
+2. I dati visualizzati rimangono congelati (con timestamp "Xs fa")
+3. I comandi manuali vengono rifiutati con overlay "Connessione mesh assente"
+4. Backlight si riduce al 20% dopo 60s per risparmiare batteria
+5. Alla riconnessione: `registry_sync_task` richiede dump completo e aggiorna tutta la UI
 
 > L'assenza dell'HMI non ha nessun effetto sulla mesh, sul ROOT o sui nodi funzione.
 
 ---
 
-## Comportamento in assenza di alimentazione 12V
-
-Quando l'HMI è alimentato solo via USB-C (es. durante manutenzione del camper):
-
-1. Il banner `⚡ Alimentazione USB-C — modalità diagnostica` viene mostrato in header
-2. I **comandi verso gli attuatori sono bloccati** (gradino, valvole, porta) — il bus di potenza 12V è assente e gli attuatori non funzionerebbero comunque
-3. La **mesh rimane attiva**: i nodi ancora alimentati continuano a inviare heartbeat
-4. Il **display e il log** funzionano normalmente — utile per diagnostica
-5. Se il 12V torna, il banner scompare e i comandi vengono riabilitati automaticamente
-
-```c
-void power_monitor_task(void *pvParam) {
-    while (1) {
-        bool v12_present = gpio_get_level(GPIO_V12_DETECT);
-        if (!v12_present) {
-            ui_show_banner(BANNER_USB_MODE, "⚡ USB-C — comandi attuatori disabilitati");
-            command_gate_set(false);  // blocca invio comandi a STEP, GREY_WATER, ecc.
-        } else {
-            ui_clear_banner(BANNER_USB_MODE);
-            command_gate_set(true);
-        }
-        vTaskDelay(pdMS_TO_TICKS(5000));
-    }
-}
-```
-
----
-
 ## Considerazioni hardware pratiche
 
-- **SPI separati per display e SD**: condividere il bus causa freeze UI durante le scritture su SD (latenza 5–50ms per operazione filesystem)
-- **Protezione ESD USB-C**: TVS diode USBLC6-2 sul connettore USB-C
-- **Buzzer piezoelettrico passivo**: collegato a un pin LEDC per toni differenziati per severità allarme
-- **LED RGB di stato**: visibile anche a display spento (verde = mesh ok, rosso lampeggiante = allarme, arancio = batteria bassa)
-- **Fissaggio display**: viti + cornice rigida — il biadesivo non regge alle vibrazioni del camper in marcia
-- **Connettore carica 12V**: usare connettore con locking (es. JST-GH 2 pin) — evitare jack barrel
-- **Forma fattore**: prevedere un supporto/dock fisso nel camper dove l'HMI può essere appoggiato e ricaricato automaticamente tramite pogo pin o connettore magnetico
+- **Driver QSPI ST77916**: usare il componente `esp_lcd_st77916` dall'`esp-bsp` Waveshare. Non usare driver SPI standard — troppo lento per animazioni LVGL fluide
+- **Reset CST816**: il timing HIGH→LOW→HIGH con 10/10/50ms è obbligatorio; senza, il touch non risponde
+- **Double buffer LVGL**: con 8MB PSRAM su ESP32-S3R8 si possono allocare due frame buffer completi (360×360×2 byte = ~259KB cadauno) per scroll senza flickering
+- **Alimentazione camper**: collegare USB-C a un buck 12V→5V (es. MP2307DN 1A) sul bus 12V del camper — la board si ricarica automaticamente quando il camper è alimentato
+- **Vibrazione DRV2605**: pre-programmare gli effetti haptic all'avvio via I2C; la libreria Waveshare include wrapper pronti
+- **Scocca CNC metallica**: ottima per vibrazioni in marcia — nessuna necessità di fissaggi aggiuntivi rispetto al display
+- **Log SD**: lo slot MicroSD è integrato nel modulo; separato dal bus display QSPI — nessun conflitto

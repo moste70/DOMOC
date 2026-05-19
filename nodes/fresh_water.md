@@ -123,9 +123,36 @@ Quando il segnale KEY_ON (positivo sotto chiave) è attivo, i comandi di apertur
 
 ---
 
+## Payload di stato
+
+```c
+typedef struct __attribute__((packed)) {
+    uint8_t  state;       // offset 0 — CLOSED/OPEN
+    uint8_t  error_code;  // offset 1
+} fresh_water_status_t;   // 2 byte
+```
+
+## Descriptor HMI
+
+```c
+static const node_descriptor_t FRESH_WATER_DESCRIPTOR = {
+    .node_icon      = ICON_VALVE_FRESH,
+    .action_count   = 3,
+    .property_count = 1,
+    .actions = {
+        { ACTION_OPEN,       ICON_ACT_OPEN,  "APRI"   },
+        { ACTION_CLOSE,      ICON_ACT_CLOSE, "CHIUDI" },
+        { ACTION_GET_STATUS, ICON_ACT_INFO,  "INFO"   },
+    },
+    .properties = {
+        { PROP_STATE, 0, PAYLOAD_UINT8, "", "%s" },
+    },
+};
+```
+
 ## Stato pubblicato
 
-- Aperta / Chiusa / In movimento / Errore
+- Aperta / Chiusa / Errore
 
 ---
 
