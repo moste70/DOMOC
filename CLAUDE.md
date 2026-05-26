@@ -229,9 +229,9 @@ Struttura — esempio nodo STEP:
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | ROOT | — | — | — | — | key_on | — | vbat_eng | — | — |
 | STEP | motor | — | — | — | fc_closed | fc_open | — | — | SHT31 |
-| GREY_WATER | motor | — | camera | — | — | — | — | — | — |
+| GREY_WATER | motor | — | camera | — | fc_closed | fc_open | vbat_svc | — | — |
 | FRESH_WATER | — | — | valve_nc | — | — | — | — | — | — |
-| GARAGE | motor | — | lights | — | door | key_on | vbat_svc | vbat_eng | INA219 |
+| FRONT_DOOR | motor | — | — | — | fc_closed | fc_open | — | — | — |
 
 Documentazione completa: `Document/node_config_file.md`
 
@@ -270,10 +270,15 @@ DOMOC/
 │       ├── master.md       # Nodo MASTER/ROOT
 │       ├── hmi.md
 │       ├── step.md
-│       ├── garage.md
+│       ├── grey_water.md
+│       ├── front_door.md
 │       ├── fresh_water.md
 │       ├── thermo_bunk.md
-│       └── thermo_loft.md
+│       ├── thermo_kitchen.md
+│       ├── thermo_loft.md
+│       ├── rear_cam.md
+│       ├── cam_ext.md
+│       └── garage.md       # ⚠ Legacy — vedere grey_water.md e front_door.md
 └── Code/
     └── nodes/
         ├── root/           # Firmware nodo MASTER/ROOT (placeholder)
@@ -377,10 +382,17 @@ firmware/
 | `Document/pcb_universale_esp32s3.md` | Schema PCB v3.0, blocchi hardware, BOM (~20–24€/scheda) |
 | `Document/nodes/master.md` | Firmware MASTER/ROOT: registry, OTA, forwarding HMI |
 | `Document/nodes/hmi.md` | Firmware HMI: Waveshare Knob, LVGL, carosello, dual-MCU |
-| `Document/nodes/step.md` | Firmware STEP: macchina a stati gradino |
-| `Document/nodes/garage.md` | Firmware GARAGE: valvole, batteria, luci |
-| `Document/nodes/fresh_water.md` | Firmware FRESH_WATER |
-| `Document/nodes/thermo_bunk.md` | Firmware THERMO_BUNK |
-| `Document/nodes/thermo_loft.md` | Firmware THERMO_LOFT |
+| `Document/nodes/step.md` | Firmware STEP: macchina a stati gradino, SHT31 |
+| `Document/nodes/grey_water.md` | Firmware GREY_WATER: valvola, telecamera portellone, batteria servizio |
+| `Document/nodes/front_door.md` | Firmware FRONT_DOOR: porta motorizzata, finecorsa |
+| `Document/nodes/fresh_water.md` | Firmware FRESH_WATER: valvola NC |
+| `Document/nodes/thermo_bunk.md` | Firmware THERMO_BUNK: termostato letto castello |
+| `Document/nodes/thermo_kitchen.md` | Firmware THERMO_KITCHEN: termostato cucina |
+| `Document/nodes/thermo_loft.md` | Firmware THERMO_LOFT: termostato mansarda, telecamere |
+| `Document/nodes/rear_cam.md` | Firmware REAR_CAM: telecamera retromarcia, stream MJPEG HTTP |
+| `Document/nodes/cam_ext.md` | Firmware CAM_EXT: telecamere esterne, motion detection |
+| `Document/nodes/garage.md` | ⚠ Legacy — funzionalità redistribuite in grey_water.md e front_door.md |
+| `Document/ota_process.md` | Processo OTA: flusso completo, payload, rollback automatico |
+| `Document/standalone_mode.md` | Modalità standalone: comportamento senza mesh, scenari failure |
 | `Document/BOM.md` | Bill of Materials |
 | `Document/PART_LIST.md` | Lista parti con costi e fornitori |

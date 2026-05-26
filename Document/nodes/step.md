@@ -18,30 +18,33 @@ Funzioni principali:
 
 ### Microcontrollore
 
-- **ESP32-C3** — sufficiente per questo nodo (single-core, basso consumo, Wi-Fi)
+- **ESP32-S3-MINI-1** su **PCB Universale v3.0** — doppio core LX7 240 MHz, 8MB PSRAM, Wi-Fi
 
 ### Componenti
 
 | Componente | Tipo | Note |
 |---|---|---|
-| Motore gradino | DC 12V con riduttore | Già presente sul camper — interfacciato via H-bridge |
-| Driver H-bridge | **DRV8833** (TI) | Controllo bidirezionale, 2A per canale, protezione termica — [Datasheet](https://www.ti.com/lit/ds/symlink/drv8833.pdf) |
-| **Sensore SHT31** | I2C, ±0.3°C / ±2% RH | Temperatura e umidità esterna — custodia Gore-Tex IP65, rilevamenti ogni 60s |
-| Alimentazione | 12V bus camper → buck 3.3V | Il motore prende 12V direttamente, non dal buck |
-| Relay di potenza | Relay 12V/10A o MOSFET | Taglia l'alimentazione al driver motore in standby |
+| Motore gradino | DC 12V con riduttore | Già presente sul camper — interfacciato via H-bridge relay |
+| H-bridge relay | K1–K3 (HB1 sul PCB v3.0) | 3 relay SPDT pilotati da NPN BC547B — K_DIR_A, K_DIR_B, K_ENABLE in serie sul 12V_SW |
+| **Sensore SHT31** | I2C 0x44, ±0.3°C / ±2% RH | Temperatura e umidità esterna — custodia Gore-Tex IP65, rilevamenti ogni 60s |
+| Alimentazione | 12V bus camper → buck 3.3V | Il motore prende 12V direttamente da 12V_SW (commutato da K_ENABLE) |
 
-### Schema connessioni GPIO (ESP32-C3)
+Documentazione PCB completa: `Document/pcb_universale_esp32s3.md`
 
-| GPIO | Funzione | Tipo |
+### Schema GPIO (PCB Universale v3.0 — ESP32-S3-MINI-1)
+
+| GPIO | Segnale | Funzione |
 |---|---|---|
-| GPIO2 | Driver motore — DIR A (apri) | Output |
-| GPIO3 | Driver motore — DIR B (chiudi) | Output |
-| GPIO4 | Driver motore — ENABLE | Output |
-| GPIO7 | Relay alimentazione motore | Output |
-| GPIO10 | LED stato (RGB o singolo) | Output PWM |
-| GPIO8/9 | **I2C (SDA/SCL)** — **SHT31** | I2C bus, sensore temperatura/umidità esterna |
+| GPIO3 | OPT1_OUT | Finecorsa chiuso (active-LOW, dal PC817) |
+| GPIO4 | OPT2_OUT | Finecorsa aperto (active-LOW, dal PC817) |
+| GPIO8 | SDA | I2C bus — SHT31 (0x44) |
+| GPIO9 | SCL | I2C clock |
+| GPIO11 | HB1_DIR_A | H-bridge relay — direzione A (apri gradino) |
+| GPIO12 | HB1_DIR_B | H-bridge relay — direzione B (chiudi gradino) |
+| GPIO13 | HB1_EN | H-bridge relay — enable (K_ENABLE, taglia 12V_SW in standby) |
+| GPIO21 | LED_DATA | WS2812B-2020 stato |
 
-> **Sicurezza software**: il nodo STEP implementa un **timeout hardware firmware** (es. 5 secondi). Se il motore rimane attivo oltre la durata prevista senza ricevere conferma di fine corsa, il firmware spegne automaticamente l'H-bridge. Questo protegge da blocchi software. In alternativa, il motore ha limiti meccanici fisici (riduttore con stop meccanico) che prevengono sovraccarico.
+> **Sicurezza H-bridge**: K_ENABLE (GPIO13) viene portato a OFF **prima** di ogni cambio di direzione (GPIO11/12). Mai attivare DIR_A e DIR_B contemporaneamente — cortocircuito. Il firmware garantisce questa sequenza a livello software; il relay K_ENABLE in serie sul 12V_SW garantisce l'isolamento fisico in standby (consumo motore = 0 mA).
 
 ---
 
