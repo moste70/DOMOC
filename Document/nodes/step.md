@@ -95,7 +95,7 @@ Il nodo STEP **non risponde a tutti i messaggi mesh** — filtra esclusivamente 
 ```c
 // Tabella sottoscrizioni eventi — definita a compile time in NVS
 const mesh_subscription_t step_subscriptions[] = {
-    { .source_node_id = NODE_ID_KEY_ON,  .msg_type = MSG_ALERT  },  // chiave inserita/disinserita
+    { .source_node_id = NODE_ID_ROOT,    .msg_type = MSG_KEY_ON  },  // chiave inserita (broadcast da ROOT)
     { .source_node_id = NODE_ID_HMI,     .msg_type = MSG_COMMAND }, // comandi manuali dall'HMI
     { .source_node_id = NODE_ID_ROOT,    .msg_type = MSG_STATUS_REQ }, // richiesta stato dal ROOT
     { .source_node_id = NODE_ID_ROOT,    .msg_type = MSG_OTA_START }, // aggiornamento firmware
@@ -104,7 +104,7 @@ const mesh_subscription_t step_subscriptions[] = {
 
 ### Reazione agli eventi sottoscritti
 
-#### Evento: `KEY_ON` → MSG_ALERT (chiave inserita)
+#### Evento: `MSG_KEY_ON` → broadcast da ROOT (chiave inserita)
 
 ```c
 void on_key_on_event(key_on_alert_t *alert) {
@@ -277,15 +277,12 @@ All'avvio, dopo aver ricevuto `MSG_REGISTER_ACK`, il nodo invia:
 ```c
 void send_descriptor(void) {
     mesh_msg_t msg = {
-        .version    = PROTOCOL_VERSION,
-        .msg_type   = MSG_DESCRIPTOR,
-        .node_id    = NODE_ID_STEP,
-        .target_id  = NODE_ID_ROOT,
-        .seq_num    = next_seq_num(),
-        .payload_len = sizeof(node_descriptor_t),
+        .msg_type = MSG_DESCRIPTOR,
+        .src_id   = NODE_ID_STEP,
+        .dst_id   = NODE_ID_ROOT,
+        .seq_num  = next_seq_num(),
     };
     memcpy(msg.payload, &STEP_DESCRIPTOR, sizeof(node_descriptor_t));
-    msg.crc16 = crc16_calc(&msg);
     enqueue_mesh_tx(&msg);
 }
 ```

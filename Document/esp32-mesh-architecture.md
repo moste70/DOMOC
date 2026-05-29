@@ -20,7 +20,7 @@ Il sistema adotta una **separazione netta tra infrastruttura mesh e interfaccia 
 |---|---|---|---|
 | `0x0001` | **ROOT** | Infrastruttura | Root fisso mesh + registry persistente + sensori critici (chiave, batteria motore) |
 | `0x0002` | **STEP** | Sensore + Attuatore | Gradino motorizzato + rilevamento stato + sensore temperatura esterna |
-| `0x0003` | **GARAGE (GREY_WATER)** | Sensore + Attuatore | Valvola acque grigie bipolare + monitoraggio batteria di servizio (critico) |
+| `0x0003` | **GREY_WATER** | Sensore + Attuatore | Valvola acque grigie bipolare + monitoraggio batteria di servizio (critico) |
 | `0x0004` | **FRESH_WATER** | Attuatore | Valvola acque chiare normalmente chiusa (NC) |
 | `0x0005` | **THERMO_BUNK** | Sensore + Attuatore | Termostato letto + comando valvola aria calda |
 | `0x0006` | **THERMO_LOFT** | Sensore + Attuatore | Termostato mansarda + comando valvola aria calda |
@@ -41,7 +41,7 @@ Il sistema adotta una **separazione netta tra infrastruttura mesh e interfaccia 
   - Rilevamento **chiave accensione**: legge il segnale +12V dal contatto di accensione del veicolo tramite optoisolatore (PC817). Quando il segnale passa da OFF→ON o ON→OFF, invia immediatamente `MSG_ALERT` broadcast sulla mesh.
   - Monitoraggio **batteria motore (12V starter)**: tensione tramite partitore ADC (100kΩ/27kΩ). Segnala accensione motore (>13.5V = alternatore in carica).
 - **STEP (gradino)**: controllo motorizzato + rilevamento finecorsa. **Integra sensore SHT31 I2C** (temperatura ±0.3°C / umidità ±2% RH) in custodia Gore-Tex per misure ambientali esterne. Pubblica letture ogni 60s sulla mesh.
-- **GARAGE (GREY_WATER - valvola acque grigie)**: controllo valvola bipolare tramite **H-bridge DRV8833** (inversione polarità). **Monitora criticamente batteria di servizio**: AGM/LiFePO4 via partitore ADC (100kΩ/27kΩ) o INA219 (consigliato). Invia alert sotto 11.8V (warning) e 11.5V (critico — blocco comandi).
+- **GREY_WATER (valvola acque grigie)**: controllo valvola bipolare tramite **H-bridge DRV8833** (inversione polarità). **Monitora criticamente batteria di servizio**: AGM/LiFePO4 via partitore ADC (100kΩ/27kΩ) o INA219 (consigliato). Invia alert sotto 11.8V (warning) e 11.5V (critico — blocco comandi).
 - **Valvola acque chiare** (`FRESH_WATER`): elettrovalvola **normalmente chiusa (NC)**, si apre solo se alimentata (relay/MOSFET). Torna chiusa automaticamente in assenza di alimentazione.
 - **Timeout di sicurezza hardware**: valvole e motori si fermano automaticamente dopo N secondi senza conferma mesh (configurabile via NVS).
 
@@ -54,7 +54,7 @@ Il sistema adotta una **separazione netta tra infrastruttura mesh e interfaccia 
 | **ROOT** | Always-on, nessun display; modem sleep abilitato; sensore chiave interrupt-driven | < 20 mA |
 | **HMI** | Batteria LiPo + alimentazione 12V opzionale; display off dopo 60s; light sleep quando non usato | < 5 mA sleep, ~180 mA attivo |
 | **STEP** | Light sleep tra i comandi; attuatore alimentato solo durante il movimento; SHT31 ogni 60s | < 8 mA idle |
-| **GARAGE (GREY_WATER)** | Light sleep; valvola NC — non consuma se chiusa; monitor batteria ogni 30s (critico) | < 10 mA idle |
+| **GREY_WATER** | Light sleep; valvola NC — non consuma se chiusa; monitor batteria ogni 30s (critico) | < 10 mA idle |
 | **FRESH_WATER** | Light sleep; valvola NC — non consuma se chiusa | < 5 mA idle |
 | **THERMO_BUNK/LOFT/KITCHEN** | Light sleep; sensore temperatura ogni 30s; valvola aperta solo se necessario | < 10 mA idle |
 | **REAR_CAM** | Spento di default; attivato solo quando retromarcia inserita | 0 mA spento |
@@ -148,7 +148,7 @@ I seguenti nodi utilizzano motori o valvole bipolari controllate da **H-bridge D
 | Nodo | Carico | Driver | Datasheet |
 |---|---|---|---|
 | **STEP** | Motore gradino bidirezionale | DRV8833 ×1 | [TI DRV8833](https://www.ti.com/lit/ds/symlink/drv8833.pdf) |
-| **GARAGE (GREY_WATER)** | Valvola acque grigie bipolare | DRV8833 ×1 | [TI DRV8833](https://www.ti.com/lit/ds/symlink/drv8833.pdf) |
+| **GREY_WATER** | Valvola acque grigie bipolare | DRV8833 ×1 | [TI DRV8833](https://www.ti.com/lit/ds/symlink/drv8833.pdf) |
 | **FRONT_DOOR** | Motore porta bidirezionale | DRV8833 ×1 | [TI DRV8833](https://www.ti.com/lit/ds/symlink/drv8833.pdf) |
 | **Totale sistema** | — | **3× DRV8833** | — |
 

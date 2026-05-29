@@ -21,22 +21,39 @@ Tutti i nodi DomoC comunicano tramite **ESP-Mesh** (Wi-Fi mesh). La comunicazion
 ## Struttura generale di un messaggio (esempio C)
 
 ```c
-#define MSG_PAYLOAD_SIZE 32
+#define MSG_PAYLOAD_MAX 200
 
 typedef enum {
-    MSG_COMMAND = 0x01,
-    MSG_STATUS  = 0x02,
-    MSG_ALERT   = 0x03,
-    MSG_OTA     = 0x04,
-    MSG_REGISTER= 0x05
+    MSG_COMMAND          = 0x01,
+    MSG_STATUS           = 0x02,
+    MSG_ALERT            = 0x03,  // deprecato — usare messaggi specifici
+    MSG_HEARTBEAT        = 0x06,
+    MSG_REGISTER         = 0x05,
+    MSG_REGISTER_ACK     = 0x09,
+    MSG_DESCRIPTOR       = 0x07,
+    MSG_DESCRIPTOR_REQ   = 0x08,
+    MSG_NODE_JOINED      = 0x0D,
+    MSG_NODE_WARNING     = 0x0E,
+    MSG_NODE_OFFLINE     = 0x0F,
+    MSG_NODE_LOST        = 0x10,
+    MSG_STATUS_REQ       = 0x0A,
+    MSG_STATUS_RESP      = 0x0B,
+    MSG_REGISTRY_DUMP    = 0x0C,
+    MSG_KEY_ON           = 0x11,  // ROOT → broadcast: chiave inserita
+    MSG_KEY_OFF          = 0x12,  // ROOT → broadcast: chiave tolta
+    MSG_STEP_OPEN        = 0x13,  // STEP → broadcast: scaletta aperta
+    MSG_OTA_START        = 0x20,
+    MSG_OTA_CHUNK        = 0x21,
+    MSG_OTA_END          = 0x22,
+    MSG_OTA_ACK          = 0x23,
 } msg_type_t;
 
 typedef struct __attribute__((packed)) {
-    uint8_t     src_id;      // Nodo mittente
-    uint8_t     dst_id;      // Nodo destinatario (o broadcast)
-    uint8_t     type;        // Tipo messaggio (msg_type_t)
-    uint8_t     seq_num;     // Sequenza per ACK/ritrasmissione
-    uint8_t     payload[MSG_PAYLOAD_SIZE]; // Dati specifici
+    uint8_t  msg_type;               // msg_type_t
+    uint8_t  src_id;                 // Nodo mittente
+    uint8_t  dst_id;                 // Nodo destinatario (0xFF = broadcast tutti)
+    uint8_t  seq_num;                // Sequenza per ACK/dedup
+    uint8_t  payload[MSG_PAYLOAD_MAX];
 } mesh_msg_t;
 ```
 

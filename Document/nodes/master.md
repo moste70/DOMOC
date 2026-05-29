@@ -52,6 +52,8 @@ Responsabilità **esclusivamente infrastrutturali**:
 
 | GPIO | Funzione |
 |---|---|
+| GPIO1 | Interrupt chiave accensione (optoisolatore PC817 — active-LOW) |
+| GPIO2 | ADC batteria motore (partitore 100kΩ/27kΩ, range 0–16.5V) |
 | GPIO18 | LED stato verde (mesh ok) |
 | GPIO19 | LED stato rosso (errore / boot) |
 | GPIO20/21 | UART TX/RX (debug) |
@@ -121,18 +123,6 @@ L'OTA (Over-The-Air Update) è il meccanismo che permette di aggiornare il firmw
 - Log e stato avanzamento visibili in tempo reale sull'HMI.
 
 > **Nota:** Il MASTER non memorizza il firmware a lungo termine: funge solo da ponte tra l'HMI (che carica il file) e i nodi destinatari. Tutto il processo è tracciato e ogni errore viene notificato all'utente tramite l'HMI.
-
----
-
-## Funzioni applicative aggiuntive
-
-Oltre alle funzioni infrastrutturali, il MASTER gestisce direttamente:
-
-- **Accensione/spegnimento luce esterna**: tramite uscita digitale o relay, il MASTER può comandare la luce esterna del camper su richiesta mesh o HMI.
-- **Lettura livello acque chiare**: legge la tensione analogica proporzionale al livello del serbatoio acque chiare (tramite ADC) e pubblica il dato sulla mesh.
-- **Rilevamento segnale acque grigie piene**: monitora un ingresso digitale collegato al sensore di livello acque grigie pieno e pubblica un alert sulla mesh.
-
-Queste funzioni permettono di centralizzare alcune logiche di base e semplificare il cablaggio, mantenendo la mesh aggiornata su stati critici e comandi di servizio.
 
 ---
 
