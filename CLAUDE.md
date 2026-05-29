@@ -118,7 +118,7 @@ Architettura dual-MCU:
 ## Stack tecnologico
 
 - **Framework**: ESP-IDF 4.x/5.x — non Arduino
-- **Linguaggio**: C (con cJSON per la configurazione)
+- **Linguaggio**: C++ (ereditarietà `NodeBase`; cJSON per la configurazione JSON)
 - **RTOS**: FreeRTOS (integrato in ESP-IDF)
 - **Mesh**: ESP-Mesh (libreria ufficiale Espressif, sopra Wi-Fi 802.11)
 - **Storage**: NVS (persistenza runtime) + SPIFFS partizione `config` (JSON)
@@ -280,35 +280,40 @@ DOMOC/
 │       ├── cam_ext.md
 │       └── garage.md       # ⚠ Legacy — vedere grey_water.md e front_door.md
 └── Code/
+    ├── Base/               # ✅ Libreria comune C++ (NodeBase, protocollo, descriptor)
+    │   ├── include/
+    │   │   ├── mesh_protocol.hpp
+    │   │   ├── node_descriptor.hpp
+    │   │   └── node_base.hpp
+    │   └── src/
+    │       └── node_base.cpp
     └── nodes/
-        ├── root/           # Firmware nodo MASTER/ROOT (placeholder)
-        ├── master/         # Firmware nodo MASTER/ROOT (placeholder)
-        ├── step/           # Firmware nodo STEP (placeholder)
-        ├── garage/         # Firmware nodo GARAGE (placeholder)
-        ├── fresh_water/    # Firmware nodo FRESH_WATER (placeholder)
-        ├── hmi/            # Firmware nodo HMI (placeholder)
-        ├── thermo_bunk/    # Firmware nodo THERMO_BUNK (placeholder)
-        └── thermo_loft/    # Firmware nodo THERMO_LOFT (placeholder)
+        ├── master/         # Firmware nodo MASTER/ROOT (Fase 2)
+        ├── step/           # Firmware nodo STEP (Fase 1)
+        ├── grey_water/     # Firmware nodo GREY_WATER (Fase 4)
+        ├── fresh_water/    # Firmware nodo FRESH_WATER (Fase 4)
+        ├── hmi/            # Firmware nodo HMI (Fase 3)
+        ├── thermo_bunk/    # Firmware nodo THERMO_BUNK (Fase 5)
+        ├── thermo_loft/    # Firmware nodo THERMO_LOFT (Fase 5)
+        └── front_door/     # Firmware nodo FRONT_DOOR (Fase 8)
 ```
 
-> Tutti i file `.gitkeep` in `Code/nodes/` indicano cartelle di firmware ancora da implementare.
-> Il firmware usa ESP-IDF con struttura standard `main/`, `CMakeLists.txt`, `partitions.csv`.
+> I firmware in `Code/nodes/` sono placeholder. Vedere `Document/piano_di_sviluppo.md`
+> per la roadmap completa fase per fase.
+> Ogni nodo usa `EXTRA_COMPONENT_DIRS = ../../Base` per ereditare `domoc_base`.
 
-**Struttura firmware target per nodo funzione:**
+**Struttura firmware nodo funzione (eredita da Code/Base):**
 
 ```
-firmware/
-├── shared/
-│   ├── protocol/           # mesh_protocol.h, node_descriptor.h
-│   ├── mesh_manager/       # Wrapper ESP-Mesh
-│   └── nvs_store/          # Astrazione NVS
-├── root/                   # Nodo ROOT/MASTER
-├── hmi/                    # Nodo HMI (LVGL, display, encoder)
-└── nodes/
-    ├── step/
-    ├── grey_water/
-    ├── fresh_water/
-    └── thermo/
+Code/nodes/<nodo>/
+├── CMakeLists.txt          # EXTRA_COMPONENT_DIRS ../../Base
+├── partitions.csv          # dual-bank OTA + config (64KB SPIFFS)
+├── sdkconfig.defaults
+└── main/
+    ├── CMakeLists.txt
+    ├── main.cpp            # app_main: istanzia il nodo, legge node_config.json
+    ├── <nodo>_node.hpp     # class XxxNode : public domoc::NodeBase
+    └── <nodo>_node.cpp
 ```
 
 ---
@@ -394,5 +399,6 @@ firmware/
 | `Document/nodes/garage.md` | ⚠ Legacy — funzionalità redistribuite in grey_water.md e front_door.md |
 | `Document/ota_process.md` | Processo OTA: flusso completo, payload, rollback automatico |
 | `Document/standalone_mode.md` | Modalità standalone: comportamento senza mesh, scenari failure |
+| `Document/piano_di_sviluppo.md` | Roadmap fase per fase: Base → STEP → MASTER → HMI → valvole → OTA |
 | `Document/BOM.md` | Bill of Materials |
 | `Document/PART_LIST.md` | Lista parti con costi e fornitori |
