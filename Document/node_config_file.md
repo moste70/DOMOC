@@ -367,7 +367,7 @@ di ridefinirlo senza ricompilare — utile per customizzazione sul campo.
 {
   "version": 1,
   "node": {
-    "id": 3,
+    "id": 2,
     "type": "STEP",
     "label": "Gradino accesso",
     "hw_revision": "3.0",
@@ -479,7 +479,7 @@ di ridefinirlo senza ricompilare — utile per customizzazione sul campo.
 {
   "version": 1,
   "node": {
-    "id": 4,
+    "id": 3,
     "type": "GREY_WATER",
     "label": "Valvola scarico acque grigie",
     "hw_revision": "3.0",

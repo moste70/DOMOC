@@ -10,12 +10,8 @@ Funzioni principali:
 
 - **Controllo valvola aria calda**: attiva/disattiva la valvola in base al confronto tra temperatura letta e temperatura impostata.
 - **Rilevamento temperatura locale**: sensore digitale (es. DS18B20, SHT31) posizionato nel letto a castello.
-- **Visualizzazione locale**: piccolo display a basso consumo (es. OLED I2C 0.96") che mostra temperatura letta e temperatura impostata.
-- **Gestione pulsanti**: 3 pulsanti fisici per:
-  - Temp Up (aumenta setpoint)
-  - Temp Down (diminuisce setpoint)
-  - On/Off (abilita/disabilita gestione locale)
-- **Gestione termostato locale/centrale**: se il termostato locale è "Off", la gestione della valvola passa al termostato centralizzato (es. HMI o nodo ROOT).
+- **Visualizzazione locale**: display touch compatto che mostra temperatura, setpoint e stato valvola.
+- **Gestione termostato locale/centrale**: se il termostato locale è "Off", la gestione della valvola passa al termostato centralizzato (HMI).
 - **Pubblicazione dati sulla mesh**: stato valvola, temperatura letta, temperatura impostata e stato locale/centrale sono pubblicati periodicamente sulla mesh per visualizzazione e log.
 
 ---
@@ -24,21 +20,8 @@ Funzioni principali:
 
 Oltre alla gestione della valvola aria calda, il nodo THERMO_BUNK controlla anche le luci del letto a castello:
 
-- **Due luci indipendenti**: una per il letto alto e una per il letto basso, ciascuna comandata da un'uscita dedicata (relay o MOSFET).
-- **Comando locale e remoto**:
-  - Le luci possono essere accese/spente sia tramite pulsanti fisici sul nodo (uno per ogni luce) sia tramite comandi inviati dall'HMI.
-  - Lo stato delle luci viene pubblicato sulla mesh e visualizzato in tempo reale sull'HMI.
-- **Pulsanti aggiuntivi**: il nodo dispone quindi di 5 pulsanti totali:
-  - Temp Up
-  - Temp Down
-  - On/Off termostato locale/centrale
-  - Luce letto alto (toggle)
-  - Luce letto basso (toggle)
-- **Logica**:
-  - Ogni pressione dei pulsanti luce commuta lo stato ON/OFF della rispettiva luce.
-  - I comandi ricevuti via mesh dall'HMI hanno la precedenza e aggiornano lo stato locale.
-
-> In questo modo il comfort e il controllo locale sono massimi, ma l'utente può sempre intervenire anche da remoto tramite HMI.
+- **Due luci indipendenti**: luce letto alto e luce letto basso, ciascuna comandabile dal display touch locale e dall'HMI.
+- I comandi ricevuti via mesh dall'HMI aggiornano lo stato locale e il display.
 
 ---
 
@@ -46,8 +29,7 @@ Oltre alla gestione della valvola aria calda, il nodo THERMO_BUNK controlla anch
 
 - **ESP32-C3** (basso consumo, Wi-Fi mesh)
 - **Sensore temperatura**: DS18B20 (1-Wire) o SHT31 (I2C)
-- **Display**: OLED I2C 0.96" (128x32 o 128x64, consumo <20mA)
-- **Pulsanti**: 3 (Temp Up, Temp Down, On/Off)
+- **Display touch**: 3.2" IPS capacitivo (es. CrowPanel ESP32 240×320)
 - **Relay/MOSFET**: per attuazione valvola aria calda
 - **Alimentazione**: 12V bus camper → buck 3.3V
 
@@ -67,9 +49,9 @@ Oltre alla gestione della valvola aria calda, il nodo THERMO_BUNK controlla anch
    - Riceve eventuali comandi dal termostato centralizzato (es. HMI o ROOT) via mesh.
    - Stato e valori sono comunque visualizzati sul display.
 
-3. **Gestione pulsanti**:
-   - Temp Up/Down: incrementano/decrementano il setpoint (es. step 0.5°C, range 15–30°C).
-   - On/Off: commuta tra gestione locale e centralizzata (con feedback visivo su display).
+3. **Gestione touch display**:
+   - Temp+/Temp-: incrementano/decrementano il setpoint (step 0.5°C, range 15–30°C).
+   - Locale/Centrale: commuta tra gestione locale e centralizzata (con feedback visivo).
 
 4. **Pubblicazione mesh**:
    - Ogni variazione di stato/setpoint/temperatura viene pubblicata sulla mesh (MSG_STATUS, MSG_ALERT).
