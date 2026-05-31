@@ -2,15 +2,10 @@
 #include <cstdint>
 #include <cstring>
 
-// Include the actual code we want to test
-extern "C" {
-    #include "../Base/include/mesh_protocol.hpp"
-}
+// Include the actual protocol definitions
+#include "../Base/include/mesh_protocol.hpp"
 
-// Include domoc namespace
-namespace domoc {
-    #include "../Base/include/mesh_protocol.hpp"
-}
+using namespace domoc;
 
 // Test suite for CRC8 function
 class CRC8Test : public ::testing::Test {
