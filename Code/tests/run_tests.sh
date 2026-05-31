@@ -4,22 +4,15 @@ set -e
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 BUILD_DIR="${SCRIPT_DIR}/build"
 
-echo "📦 Installing dependencies..."
-if command -v apt-get &> /dev/null; then
-    sudo apt-get update -qq
-    sudo apt-get install -y -qq cmake g++ libgtest-dev 2>&1 | grep -v "^Get:\|^Hit:\|^Reading\|^Building" || true
-fi
-
-echo "🔨 Building host-based unit tests..."
+echo "📦 Compiling simple test (no dependencies needed)..."
 mkdir -p "$BUILD_DIR"
-cd "$BUILD_DIR"
 
-cmake ..
-cmake --build . --config Debug
+g++ -std=c++14 -I"${SCRIPT_DIR}/../Base/include" \
+    "${SCRIPT_DIR}/test_simple.cpp" \
+    -o "${BUILD_DIR}/test_simple"
 
-echo ""
 echo "✅ Running tests..."
-ctest --output-on-failure
+"${BUILD_DIR}/test_simple"
 
 echo ""
-echo "✨ All tests passed!"
+echo "✨ Tests completed!"

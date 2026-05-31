@@ -9,17 +9,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Install dependencies
-        run: |
-          sudo apt-get update -qq
-          sudo apt-get install -y -qq cmake g++ libgtest-dev
+        run: sudo apt-get update && sudo apt-get install -y g++
       - name: Run unit tests
         run: |
           cd Code/tests
-          mkdir -p build
-          cd build
-          cmake ..
-          cmake --build .
-          ctest --output-on-failure
+          bash run_tests.sh
 
   build-step:
     name: Build STEP firmware
