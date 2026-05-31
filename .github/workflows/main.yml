@@ -13,4 +13,3 @@ jobs:
           esp_idf_version: release-v5.2
           target: esp32s3
           path: 'Code/nodes/step'
-          command: 'idf.py set-target esp32s3 && idf.py build -v 2>&1'
