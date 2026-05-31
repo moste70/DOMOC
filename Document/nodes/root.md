@@ -70,6 +70,63 @@ Responsabilità **esclusivamente infrastrutturali**:
 
 ---
 
+## Librerie ESP-IDF utilizzate
+
+Il firmware ROOT è sviluppato con **ESP-IDF 5.x** su target **ESP32-C3**. Di seguito le librerie dichiarate come dipendenze in `main/CMakeLists.txt` (campo `REQUIRES`) e i relativi header inclusi nel codice.
+
+### Dipendenze CMake (`REQUIRES`)
+
+| Componente ESP-IDF | Header principali | Uso nel firmware ROOT |
+|---|---|---|
+| `esp_wifi` | `esp_wifi.h` | Inizializzazione Wi-Fi, modem sleep, potenza TX |
+| `esp_mesh` | `esp_mesh.h` | Stack ESP-Mesh: init, config, send/recv, eventi |
+| `nvs_flash` | `nvs_flash.h`, `nvs.h` | Persistenza registry nodi e configurazione su flash NVS |
+| `esp_netif` | `esp_netif.h` | Netif richiesto da ESP-Mesh prima dell'avvio Wi-Fi |
+| `esp_event` | `esp_event.h` | Event loop per callback eventi mesh e Wi-Fi |
+| `freertos` | `freertos/FreeRTOS.h`, `task.h`, `queue.h`, `semphr.h`, `event_groups.h` | Task, code messaggi TX, mutex registry, sincronizzazione OTA |
+| `esp_timer` | `esp_timer.h` | Timestamp `now_ms()` per heartbeat monitor e payload |
+| `app_update` | `esp_ota_ops.h` | Gestione partizioni OTA dual-bank per distribuzione firmware |
+| `spiffs` | `esp_spiffs.h` | Partizione `config` per storage firmware OTA in attesa di distribuzione |
+| `esp_log` | `esp_log.h` | Logging strutturato con livelli (TAG per ogni modulo) |
+
+### Header interni al progetto
+
+| File | Dipende da |
+|---|---|
+| `mesh_protocol.h` | `stdint.h`, `stdbool.h` — nessuna dipendenza IDF |
+| `mesh_manager.h` | `esp_err.h`, `esp_mesh.h`, `esp_wifi.h`, `esp_event.h` |
+| `node_registry.h` | `mesh_protocol.h`, `nvs.h`, `freertos/semphr.h` |
+| `mesh_rx_task.h` | `esp_mesh.h`, `mesh_protocol.h` |
+| `mesh_tx_task.h` | `esp_mesh.h`, `freertos/queue.h`, `mesh_protocol.h` |
+| `heartbeat_monitor.h` | `esp_timer.h`, `node_registry.h` |
+| `nvs_persist.h` | `nvs_flash.h`, `nvs.h` |
+| `ota_distributor.h` | `freertos/queue.h`, `freertos/event_groups.h`, `esp_ota_ops.h` |
+
+### Configurazioni chiave in `sdkconfig.defaults`
+
+| Parametro | Valore | Effetto |
+|---|---|---|
+| `CONFIG_IDF_TARGET` | `esp32c3` | Target MCU |
+| `CONFIG_FREERTOS_HZ` | `1000` | Tick RTOS a 1ms — necessario per timeout precisi |
+| `CONFIG_ESP_TASK_WDT` | `y` | Watchdog task abilitato — rileva task bloccati |
+| `CONFIG_ESP_TASK_WDT_TIMEOUT_S` | `10` | Reset se un task non fa `vTaskDelay` entro 10s |
+| `CONFIG_BOOTLOADER_APP_ROLLBACK_ENABLE` | `y` | Rollback automatico OTA se il nodo non si avvia |
+| `CONFIG_PARTITION_TABLE_CUSTOM` | `y` | Usa `partitions.csv` con layout OTA dual-bank |
+| `CONFIG_LOG_DEFAULT_LEVEL_INFO` | `y` | Livello log default INFO (DEBUG disabilitato in produzione) |
+
+### Schema partizioni flash (`partitions.csv`)
+
+| Nome | Tipo | Offset | Dimensione | Uso |
+|---|---|---|---|---|
+| `nvs` | data/nvs | 0x9000 | 24 KB | Registry nodi, config mesh |
+| `phy_init` | data/phy | 0xF000 | 4 KB | Calibrazione RF Wi-Fi |
+| `ota_data` | data/ota | 0x10000 | 8 KB | Puntatore partizione OTA attiva |
+| `ota_0` | app/ota_0 | 0x20000 | 896 KB | Firmware attivo (slot A) |
+| `ota_1` | app/ota_1 | 0x100000 | 896 KB | Firmware nuovo (slot B) |
+| `config` | data/spiffs | 0x1E0000 | 128 KB | Storage firmware per distribuzione OTA |
+
+---
+
 ## Funzioni software
 
 ### 1. Inizializzazione come root fissa

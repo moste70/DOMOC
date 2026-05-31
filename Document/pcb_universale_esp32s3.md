@@ -42,31 +42,31 @@ il ruolo di ogni IO fisico viene assegnato dal file `node_config.json` che il fi
 │                                                                          │
 │  ┌─────────────┐   ┌──────────────────────────────────────────────────┐  │
 │  │ ALIMENTAZ.  │   │             ESP32-S3-MINI-1                      │  │
-│  │ 12V→3.3V   │   │                                                  │  │
-│  │ MP2307DN   │   │  GPIO1  ADC_DIV1    GPIO2  ADC_DIV2              │  │
-│  │ 800mA      │   │  GPIO3  OPT1_OUT    GPIO4  OPT2_OUT              │  │
+│  │ 12V→3.3V    │   │                                                  │  │
+│  │ MP2307DN    │   │  GPIO1  ADC_DIV1    GPIO2  ADC_DIV2              │  │
+│  │ 800mA       │   │  GPIO3  OPT1_OUT    GPIO4  OPT2_OUT              │  │
 │  └─────────────┘   │  GPIO5  EXP1        GPIO6  EXP2  (liberi)        │  │
 │                    │  GPIO8  SDA (I2C)   GPIO9  SCL (I2C)             │  │
 │  ┌─────────────┐   │  GPIO10 OW_DATA (1-Wire)                         │  │
-│  │ H-BRIDGE 1 │◄──│  GPIO11 HB1_DIR_A   GPIO12 HB1_DIR_B             │  │
-│  │ K1 DIR_A   │   │  GPIO13 HB1_EN                                   │  │
-│  │ K2 DIR_B   │   │  GPIO14 HB2_DIR_A   GPIO15 HB2_DIR_B             │  │
-│  │ K3 ENABLE  │   │  GPIO16 HB2_EN                                   │  │
-│  │ ►MOT1_A/B  │   │  GPIO17 REL1        GPIO18 REL2                  │  │
+│  │ H-BRIDGE 1  │◄──│  GPIO11 HB1_DIR_A   GPIO12 HB1_DIR_B             │  │
+│  │ K1 DIR_A    │   │  GPIO13 HB1_EN                                   │  │
+│  │ K2 DIR_B    │   │  GPIO14 HB2_DIR_A   GPIO15 HB2_DIR_B             │  │
+│  │ K3 ENABLE   │   │  GPIO16 HB2_EN                                   │  │
+│  │ ►MOT1_A/B   │   │  GPIO17 REL1        GPIO18 REL2                  │  │
 │  └─────────────┘   │  GPIO21 LED_DATA (WS2812B)                       │  │
 │                    │  GPIO43 UART_TX     GPIO44 UART_RX               │  │
 │  ┌─────────────┐   │  GPIO0  BOOT (btn)  EN     RESET (btn)           │  │
-│  │ H-BRIDGE 2 │◄──└──────────────────────────────────────────────────┘  │
-│  │ K4 DIR_A   │                                                         │
-│  │ K5 DIR_B   │   ┌──────────┐  ┌──────────┐  ┌──────────┐            │
-│  │ K6 ENABLE  │   │  REL1    │  │  REL2    │  │   I2C    │            │
-│  │ ►MOT2_A/B  │   │  SPDT K7 │  │  SPDT K8 │  │ JST-PH4  │            │
-│  └─────────────┘   └──────────┘  └──────────┘  └──────────┘            │
+│  │ H-BRIDGE 2  │◄──└──────────────────────────────────────────────────┘  │
+│  │ K4 DIR_A    │                                                         │
+│  │ K5 DIR_B    │   ┌──────────┐  ┌──────────┐  ┌──────────┐              │
+│  │ K6 ENABLE   │   │  REL1    │  │  REL2    │  │   I2C    │              │
+│  │ ►MOT2_A/B   │   │  SPDT K7 │  │  SPDT K8 │  │ JST-PH4  │              │
+│  └─────────────┘   └──────────┘  └──────────┘  └──────────┘              │
 │                                                                          │
-│  ┌─────────────┐   ┌──────────┐  ┌──────────┐  ┌──────────┐            │
-│  │ OPT1, OPT2 │   │ ADC DIV1 │  │ ADC DIV2 │  │  1-WIRE  │            │
-│  │ 2× PC817-A │   │ 100k/27k │  │ 100k/27k │  │  4.7k pu │            │
-│  │ 12V isolati│   └──────────┘  └──────────┘  └──────────┘            │
+│  ┌─────────────┐   ┌──────────┐  ┌──────────┐  ┌──────────┐              │
+│  │ OPT1, OPT2  │   │ ADC DIV1 │  │ ADC DIV2 │  │  1-WIRE  │              │
+│  │ 2× PC817-A  │   │ 100k/27k │  │ 100k/27k │  │  4.7k pu │              │
+│  │ 12V isolati │   └──────────┘  └──────────┘  └──────────┘              │
 │  └─────────────┘                                                         │
 └──────────────────────────────────────────────────────────────────────────┘
 ```
