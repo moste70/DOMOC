@@ -2,7 +2,7 @@
 
 #include "node_base.hpp"
 #include "driver/gpio.h"
-#include "driver/i2c.h"
+#include "driver/i2c_master.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "freertos/queue.h"
@@ -68,7 +68,6 @@ private:
     static void ctrl_trampoline(void* self);
     static void fc_trampoline(void* self);
     static void sensor_trampoline(void* self);
-    static void IRAM_ATTR fc_isr(void* arg);
 
     void ctrl_loop();
     void fc_loop();
@@ -87,7 +86,10 @@ private:
     TaskHandle_t   fc_task_     = nullptr;
     TaskHandle_t   sensor_task_ = nullptr;
 
-    volatile StepState state_        = STATE_INITIALIZING;
+    i2c_master_bus_handle_t i2c_bus_     = nullptr;
+    i2c_master_dev_handle_t sht31_dev_   = nullptr;
+
+    volatile StepState state_         = STATE_INITIALIZING;
     volatile bool      tasks_running_ = true;
 
     uint32_t motor_start_ms_ = 0;

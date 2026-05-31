@@ -1,0 +1,17 @@
+name: Build DomoC nodes
+
+on: [push, pull_request]
+
+jobs:
+  build-step:
+    runs-on: ubuntu-latest
+    container:
+      image: espressif/idf:v5.2
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set ESP32-S3 target
+        working-directory: Code/nodes/step
+        run: idf.py set-target esp32s3
+      - name: Build STEP node
+        working-directory: Code/nodes/step
+        run: idf.py build

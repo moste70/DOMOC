@@ -48,30 +48,33 @@ void StepNode::gpio_init() {
     gpio_set_level(GPIO_HB_DIR_A, 0);
     gpio_set_level(GPIO_HB_DIR_B, 0);
 
-    // Finecorsa: input pull-up, interrupt su entrambi i fronti.
+    // Finecorsa: input pull-up, no interrupt (polling in fc_loop).
     gpio_config_t in_cfg = {};
     in_cfg.pin_bit_mask  = (1ULL << GPIO_FC_CLOSED) | (1ULL << GPIO_FC_OPEN);
     in_cfg.mode          = GPIO_MODE_INPUT;
     in_cfg.pull_up_en    = GPIO_PULLUP_ENABLE;
     in_cfg.pull_down_en  = GPIO_PULLDOWN_DISABLE;
-    in_cfg.intr_type     = GPIO_INTR_ANYEDGE;
+    in_cfg.intr_type     = GPIO_INTR_DISABLE;
     gpio_config(&in_cfg);
-
-    gpio_install_isr_service(0);
-    gpio_isr_handler_add(GPIO_FC_CLOSED, fc_isr, (void*)FC_EVT_CLOSED);
-    gpio_isr_handler_add(GPIO_FC_OPEN,   fc_isr, (void*)FC_EVT_OPEN);
 }
 
 void StepNode::i2c_init() {
-    i2c_config_t cfg = {};
-    cfg.mode             = I2C_MODE_MASTER;
-    cfg.sda_io_num       = GPIO_SDA;
-    cfg.scl_io_num       = GPIO_SCL;
-    cfg.sda_pullup_en    = GPIO_PULLUP_DISABLE; // pull-up 4.7kΩ fissi sul PCB
-    cfg.scl_pullup_en    = GPIO_PULLUP_DISABLE;
-    cfg.master.clk_speed = 400000;
-    i2c_param_config(I2C_NUM_0, &cfg);
-    i2c_driver_install(I2C_NUM_0, I2C_MODE_MASTER, 0, 0, 0);
+    i2c_master_bus_config_t bus_cfg = {};
+    bus_cfg.clk_source              = I2C_CLK_SRC_DEFAULT;
+    bus_cfg.i2c_port                = I2C_NUM_0;
+    bus_cfg.scl_io_num              = GPIO_SCL;
+    bus_cfg.sda_io_num              = GPIO_SDA;
+    bus_cfg.glitch_ignore_cnt       = 7;
+    bus_cfg.flags.enable_internal_pullup = false; // pull-up 4.7kΩ fissi sul PCB
+
+    ESP_ERROR_CHECK(i2c_new_master_bus(&bus_cfg, &i2c_bus_));
+
+    i2c_device_config_t dev_cfg = {};
+    dev_cfg.dev_addr_length      = I2C_ADDR_BIT_LEN_7;
+    dev_cfg.device_address       = SHT31_I2C_ADDR;
+    dev_cfg.scl_speed_hz         = 400000;
+
+    ESP_ERROR_CHECK(i2c_master_bus_add_device(i2c_bus_, &dev_cfg, &sht31_dev_));
 }
 
 // ── Task avvio ───────────────────────────────────────────────────────────────
@@ -85,40 +88,19 @@ void StepNode::start_tasks() {
     // Determina stato iniziale dai finecorsa fisici.
     bool fc_c = gpio_get_level(GPIO_FC_CLOSED) == 0; // active-LOW
     bool fc_o = gpio_get_level(GPIO_FC_OPEN)   == 0;
-    if (fc_c)       transition_to(STATE_CLOSED);
-    else if (fc_o)  transition_to(STATE_OPEN);
-    // else rimane INITIALIZING fino al primo movimento
+    if (fc_c)      transition_to(STATE_CLOSED);
+    else if (fc_o) transition_to(STATE_OPEN);
 
-    xTaskCreate(fc_trampoline,     "fc_task",    2048, this, 7, &fc_task_);
-    xTaskCreate(ctrl_trampoline,   "ctrl_task",  3072, this, 6, &ctrl_task_);
-    xTaskCreate(sensor_trampoline, "sensor_task",3072, this, 3, &sensor_task_);
+    xTaskCreate(fc_trampoline,     "fc_task",     2048, this, 7, &fc_task_);
+    xTaskCreate(ctrl_trampoline,   "ctrl_task",   3072, this, 6, &ctrl_task_);
+    xTaskCreate(sensor_trampoline, "sensor_task", 3072, this, 3, &sensor_task_);
 }
 
 void StepNode::ctrl_trampoline(void* s)   { static_cast<StepNode*>(s)->ctrl_loop(); }
 void StepNode::fc_trampoline(void* s)     { static_cast<StepNode*>(s)->fc_loop(); }
 void StepNode::sensor_trampoline(void* s) { static_cast<StepNode*>(s)->sensor_loop(); }
 
-// ── ISR finecorsa ────────────────────────────────────────────────────────────
-
-void IRAM_ATTR StepNode::fc_isr(void* arg) {
-    // arg codifica il tipo di finecorsa; il debounce avviene nel fc_loop.
-    static volatile uint32_t last_isr_ms = 0;
-    uint32_t now = (uint32_t)(esp_timer_get_time() / 1000);
-    if ((now - last_isr_ms) < 50) return; // debounce grezzo in ISR
-    last_isr_ms = now;
-
-    uint8_t evt = (uint8_t)(uintptr_t)arg;
-    BaseType_t woken = pdFALSE;
-    // Puntatore alla coda non disponibile in ISR statica: uso variabile globale
-    // tramite cast. In un progetto reale si passerebbe &queue in arg.
-    // Soluzione: la ISR segnala solo tramite notifica diretta al fc_task_.
-    (void)evt;
-    (void)woken;
-}
-
-// ── Loop finecorsa (polling + interrupt-safe) ────────────────────────────────
-// Usiamo polling nel task ad alta priorità invece dell'ISR per semplicità e
-// perché il debounce meccanico richiede comunque un delay software.
+// ── Loop finecorsa (polling con debounce) ────────────────────────────────────
 
 void StepNode::fc_loop() {
     bool prev_closed = false;
@@ -128,7 +110,6 @@ void StepNode::fc_loop() {
         bool fc_c = gpio_get_level(GPIO_FC_CLOSED) == 0;
         bool fc_o = gpio_get_level(GPIO_FC_OPEN)   == 0;
 
-        // Fronte di discesa (attivazione finecorsa) dopo debounce
         if (fc_c && !prev_closed) {
             vTaskDelay(pdMS_TO_TICKS(FC_DEBOUNCE_MS));
             if (gpio_get_level(GPIO_FC_CLOSED) == 0) {
@@ -156,7 +137,6 @@ void StepNode::ctrl_loop() {
     uint8_t fc_evt;
 
     while (tasks_running_) {
-        // Processa evento finecorsa in arrivo
         if (xQueueReceive(fc_queue_, &fc_evt, pdMS_TO_TICKS(100)) == pdTRUE) {
             uint32_t now = (uint32_t)(esp_timer_get_time() / 1000);
             if (motor_start_ms_ > 0)
@@ -170,23 +150,23 @@ void StepNode::ctrl_loop() {
             } else {
                 transition_to(STATE_OPEN);
                 StepOpenPayload p{};
-                p.open_reason    = 0;
-                p.key_on_active  = key_on_active() ? 1 : 0;
-                p.temperature    = temperature_;
+                p.open_reason   = 0;
+                p.key_on_active = key_on_active() ? 1 : 0;
+                p.temperature   = temperature_;
                 broadcast(MSG_STEP_OPEN, &p, sizeof(p));
             }
             send_status_update();
             continue;
         }
 
-        // Timeout motore: fermo il motore se il finecorsa non arriva entro N ms
+        // Timeout motore: ferma il motore se il finecorsa non arriva entro N ms.
         if (state_ == STATE_OPENING || state_ == STATE_CLOSING ||
             state_ == STATE_AUTO_CLOSING) {
             uint32_t elapsed = (uint32_t)(esp_timer_get_time() / 1000) - motor_start_ms_;
             if (motor_start_ms_ > 0 && elapsed > MOTOR_TIMEOUT_MS) {
                 motor_stop();
-                motor_start_ms_ = 0;
                 last_move_ms_   = (uint16_t)elapsed;
+                motor_start_ms_ = 0;
                 error_code_     = ERR_TIMEOUT;
                 transition_to(STATE_ERROR);
                 send_status_update();
@@ -200,8 +180,7 @@ void StepNode::ctrl_loop() {
 // ── Loop sensore SHT31 ───────────────────────────────────────────────────────
 
 void StepNode::sensor_loop() {
-    // Prima lettura appena il sensore è pronto (dopo 500ms dal boot)
-    vTaskDelay(pdMS_TO_TICKS(500));
+    vTaskDelay(pdMS_TO_TICKS(500)); // attende stabilizzazione alimentazione
 
     while (tasks_running_) {
         float t, h;
@@ -217,31 +196,18 @@ void StepNode::sensor_loop() {
     vTaskDelete(nullptr);
 }
 
-// ── Driver SHT31 (I2C) ───────────────────────────────────────────────────────
+// ── Driver SHT31 — nuova API I2C master (IDF 5.x) ───────────────────────────
 
 esp_err_t StepNode::sht31_read(float& temp_c, float& hum_pct) {
-    // Single-shot, high repeatability: 0x2C 0x06
+    // Single-shot high repeatability: cmd 0x2C 0x06
     const uint8_t cmd[2] = {0x2C, 0x06};
-
-    i2c_cmd_handle_t hdl = i2c_cmd_link_create();
-    i2c_master_start(hdl);
-    i2c_master_write_byte(hdl, (SHT31_I2C_ADDR << 1) | I2C_MASTER_WRITE, true);
-    i2c_master_write(hdl, const_cast<uint8_t*>(cmd), 2, true);
-    i2c_master_stop(hdl);
-    esp_err_t err = i2c_master_cmd_begin(I2C_NUM_0, hdl, pdMS_TO_TICKS(100));
-    i2c_cmd_link_delete(hdl);
+    esp_err_t err = i2c_master_transmit(sht31_dev_, cmd, sizeof(cmd), 100);
     if (err != ESP_OK) return err;
 
-    vTaskDelay(pdMS_TO_TICKS(20)); // misura ~15ms a high repeatability
+    vTaskDelay(pdMS_TO_TICKS(20)); // misura ~15ms ad alta ripetibilità
 
     uint8_t data[6] = {};
-    hdl = i2c_cmd_link_create();
-    i2c_master_start(hdl);
-    i2c_master_write_byte(hdl, (SHT31_I2C_ADDR << 1) | I2C_MASTER_READ, true);
-    i2c_master_read(hdl, data, 6, I2C_MASTER_LAST_NACK);
-    i2c_master_stop(hdl);
-    err = i2c_master_cmd_begin(I2C_NUM_0, hdl, pdMS_TO_TICKS(100));
-    i2c_cmd_link_delete(hdl);
+    err = i2c_master_receive(sht31_dev_, data, sizeof(data), 100);
     if (err != ESP_OK) return err;
 
     uint16_t t_raw = ((uint16_t)data[0] << 8) | data[1];
@@ -252,7 +218,7 @@ esp_err_t StepNode::sht31_read(float& temp_c, float& hum_pct) {
 }
 
 // ── Controllo motore H-bridge ────────────────────────────────────────────────
-// Sequenza obbligatoria: EN=OFF → cambia DIR → EN=ON.
+// Sequenza obbligatoria: EN=OFF → cambia DIR → EN=ON (evita cortocircuito).
 
 void StepNode::motor_open() {
     gpio_set_level(GPIO_HB_EN,    0);
@@ -337,7 +303,6 @@ void StepNode::on_standalone_enter() {
 }
 
 void StepNode::on_standalone_exit() {
-    // Lo stato fisico reale è determinato dai finecorsa, non dallo stato software.
     bool fc_c = gpio_get_level(GPIO_FC_CLOSED) == 0;
     bool fc_o = gpio_get_level(GPIO_FC_OPEN)   == 0;
     if (fc_c)      transition_to(STATE_CLOSED);
