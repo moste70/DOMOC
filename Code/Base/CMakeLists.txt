@@ -16,5 +16,4 @@ idf_component_register(
         esp_netif
         mesh
         esp_timer
-        esp_mac
 )

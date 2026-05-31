@@ -5,7 +5,6 @@
 #include "esp_log.h"
 #include "esp_random.h"
 #include "esp_timer.h"
-#include "esp_mac.h"
 #include "esp_wifi.h"
 #include "esp_mesh.h"
 #include "nvs_flash.h"
@@ -275,7 +274,7 @@ void NodeBase::do_register(bool reconnect) {
     std::strncpy(reg.name, name_, sizeof(reg.name) - 1);
     reg.node_type = static_cast<uint8_t>(node_type_);
     reg.reconnect = reconnect ? 1 : 0;
-    esp_read_mac(reg.mac, ESP_MAC_WIFI_STA);
+    esp_wifi_get_mac(WIFI_IF_STA, reg.mac);
     send_to(NODE_ID_MASTER, MSG_REGISTER, &reg, sizeof(reg));
     ESP_LOGI(TAG, "MSG_REGISTER inviato (reconnect=%d)", reconnect);
 }
