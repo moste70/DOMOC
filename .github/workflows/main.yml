@@ -1,4 +1,4 @@
-name: Build DomoC nodes
+name: DomoC Tests
 
 on: [push, pull_request]
 
@@ -14,18 +14,3 @@ jobs:
         run: |
           cd Code/tests
           bash run_tests.sh
-
-  build-step:
-    name: Build STEP firmware
-    runs-on: ubuntu-latest
-    container:
-      image: espressif/idf:release-v5.2
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Build STEP node
-        run: |
-          cd Code/nodes/step
-          . ${IDF_PATH}/export.sh
-          idf.py set-target esp32s3
-          idf.py build
