@@ -1,5 +1,10 @@
 cmake_minimum_required(VERSION 3.16)
-# CMAKE_CURRENT_LIST_DIR must be used to resolve path correctly when cmake runs from build/
-set(EXTRA_COMPONENT_DIRS "${CMAKE_CURRENT_LIST_DIR}/../../Base")
+
+# Resolve path to Base component using absolute path
+get_filename_component(BASE_COMPONENT_PATH
+    "${CMAKE_CURRENT_SOURCE_DIR}/../../Base"
+    ABSOLUTE)
+set(EXTRA_COMPONENT_DIRS "${BASE_COMPONENT_PATH}")
+
 include($ENV{IDF_PATH}/tools/cmake/project.cmake)
 project(step_node)
