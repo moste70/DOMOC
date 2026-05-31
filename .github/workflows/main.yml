@@ -6,7 +6,7 @@ jobs:
   build-step:
     runs-on: ubuntu-latest
     container:
-      image: espressif/idf:release-v5.2
+      image: espressif/idf:release-v5.1
     steps:
       - uses: actions/checkout@v4
       - name: Build STEP node
