@@ -5,22 +5,12 @@ on: [push, pull_request]
 jobs:
   build-step:
     runs-on: ubuntu-latest
-    container:
-      image: espressif/idf:release-v5.2
     steps:
       - uses: actions/checkout@v4
       - name: Build STEP node
-        working-directory: Code/nodes/step
-        shell: bash
-        run: |
-          set -o pipefail
-          idf.py set-target esp32s3
-          idf.py build 2>&1 | tee /tmp/build.log
-      - name: Show build log
-        if: always()
-        run: |
-          echo "=== LAST 100 LINES OF BUILD LOG ==="
-          tail -100 /tmp/build.log 2>/dev/null || echo "No build log found"
-          echo ""
-          echo "=== EXIT CODE OF BUILD STEP ==="
-          test -f /tmp/build.log && echo "Log exists" || echo "Log does not exist"
+        uses: espressif/esp-idf-ci-action@v1
+        with:
+          esp_idf_version: release-v5.2
+          target: esp32s3
+          path: 'Code/nodes/step'
+          command: 'idf.py set-target esp32s3 && idf.py build -v 2>&1'
