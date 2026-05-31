@@ -13,11 +13,14 @@ jobs:
         working-directory: Code/nodes/step
         shell: bash
         run: |
-          . $IDF_PATH/export.sh 2>/dev/null || true
+          set -o pipefail
           idf.py set-target esp32s3
-          idf.py build 2>&1 | tee /tmp/build.log; exit ${PIPESTATUS[0]}
-      - name: Show build errors on failure
-        if: failure()
+          idf.py build 2>&1 | tee /tmp/build.log
+      - name: Show build log
+        if: always()
         run: |
-          echo "=== LAST 80 LINES OF BUILD LOG ==="
-          tail -80 /tmp/build.log || echo "No build log found"
+          echo "=== LAST 100 LINES OF BUILD LOG ==="
+          tail -100 /tmp/build.log 2>/dev/null || echo "No build log found"
+          echo ""
+          echo "=== EXIT CODE OF BUILD STEP ==="
+          test -f /tmp/build.log && echo "Log exists" || echo "Log does not exist"
