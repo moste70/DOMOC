@@ -1,0 +1,13 @@
+idf_component_register(
+    SRCS
+        "main.cpp"
+        "hmi_node.cpp"
+    INCLUDE_DIRS
+        "."
+    REQUIRES
+        domoc_base
+        driver
+        app_update
+        spiffs
+        esp_timer
+)
