@@ -9,12 +9,8 @@ Il nodo `THERMO_LOFT` è un termostato locale dedicato alla zona mansarda. Come 
 Funzioni principali:
 - **Controllo valvola aria calda**: attiva/disattiva la valvola in base al confronto tra temperatura letta e temperatura impostata.
 - **Rilevamento temperatura locale**: sensore digitale (es. DS18B20, SHT31) posizionato in mansarda.
-- **Visualizzazione locale**: piccolo display a basso consumo (es. OLED I2C 0.96") che mostra temperatura letta e temperatura impostata.
-- **Gestione pulsanti**: 3 pulsanti fisici per:
-  - Temp Up (aumenta setpoint)
-  - Temp Down (diminuisce setpoint)
-  - On/Off (abilita/disabilita gestione locale)
-- **Gestione termostato locale/centrale**: se il termostato locale è "Off", la gestione della valvola passa al termostato centralizzato (es. HMI o nodo ROOT).
+- **Visualizzazione locale**: display touch compatto che mostra temperatura, setpoint e stato valvola.
+- **Gestione termostato locale/centrale**: se il termostato locale è "Off", la gestione della valvola passa al termostato centralizzato (HMI).
 - **Pubblicazione dati sulla mesh**: stato valvola, temperatura letta, temperatura impostata e stato locale/centrale sono pubblicati periodicamente sulla mesh per visualizzazione e log.
 
 ---
@@ -24,18 +20,8 @@ Funzioni principali:
 Il nodo THERMO_LOFT gestisce anche l'attivazione delle telecamere anteriori e posteriori del camper:
 
 - **Uscite dedicate**: due uscite (relay/MOSFET) per alimentare le telecamere anteriore e posteriore.
-- **Comando locale e remoto**:
-  - Le telecamere possono essere attivate/disattivate sia tramite pulsanti fisici aggiuntivi sul nodo (uno per ogni telecamera) sia tramite comandi inviati dall'HMI.
-  - Lo stato delle telecamere viene pubblicato sulla mesh e visualizzato in tempo reale sull'HMI.
-- **Pulsanti aggiuntivi**: il nodo dispone quindi di 5 pulsanti totali:
-  - Temp Up
-  - Temp Down
-  - On/Off termostato locale/centrale
-  - Telecamera anteriore (toggle)
-  - Telecamera posteriore (toggle)
-- **Logica**:
-  - Ogni pressione dei pulsanti telecamera commuta lo stato ON/OFF della rispettiva telecamera.
-  - I comandi ricevuti via mesh dall'HMI hanno la precedenza e aggiornano lo stato locale.
+- **Comando locale e remoto**: le telecamere sono attivabili dal display touch locale e dall'HMI via mesh.
+- I comandi ricevuti via mesh dall'HMI aggiornano lo stato locale e il display.
 
 ---
 

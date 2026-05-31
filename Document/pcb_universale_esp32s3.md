@@ -26,7 +26,7 @@ il ruolo di ogni IO fisico viene assegnato dal file `node_config.json` che il fi
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | **ROOT** | — | — | — | — | key_on | — | vbat_eng | — | — | temp_amb |
 | **STEP** | motor | — | — | — | fc_closed | fc_open | — | — | — | temp_ext |
-| **GREY_WATER** | motor | — | camera | — | — | — | — | — | — | temp_amb |
+| **GREY_WATER** | motor | — | camera | — | fc_closed | fc_open | vbat_svc | — | — | — |
 | **FRESH_WATER** | — | — | valve_nc | — | — | — | — | — | — | temp_amb |
 | **GARAGE** | motor | — | lights | — | door | key_on | vbat_svc | vbat_eng | INA219 | temp_amb |
 
@@ -555,18 +555,16 @@ interrupt, nessuna pubblicazione nel heartbeat).
   "node_name": "GREY_WATER", "node_type": "GREY_WATER",
   "hardware": {
     "hb1": { "role": "motor", "gpio_dir_a": 11, "gpio_dir_b": 12, "gpio_enable": 13,
-             "motor_run_ms": 3000, "opt_fc_closed": null, "opt_fc_open": null },
+             "motor_run_ms": 5000, "opt_fc_closed": "opt1", "opt_fc_open": "opt2" },
     "hb2":  { "role": "unused" },
     "rel1": { "role": "camera" },
     "rel2": { "role": "unused" },
-    "opt1": { "role": "unused", "gpio": 3 },
-    "opt2": { "role": "unused", "gpio": 4 },
-    "adc1": { "role": "unused", "gpio": 1 },
+    "opt1": { "role": "fc_closed", "gpio": 3, "hb_id": "hb1" },
+    "opt2": { "role": "fc_open",   "gpio": 4, "hb_id": "hb1" },
+    "adc1": { "role": "vbat_service", "gpio": 1 },
     "adc2": { "role": "unused", "gpio": 2 },
     "i2c":  { "gpio_sda": 8, "gpio_scl": 9, "freq_hz": 400000, "devices": [] },
-    "onewire": { "gpio": 10, "devices": [
-      { "address": "28BB220F00000000", "role": "temp_ambient" }
-    ]}
+    "onewire": { "gpio": 10, "devices": [] }
   }
 }
 ```

@@ -75,7 +75,7 @@ Al boot il firmware lo legge, lo valida e popola le strutture C interne.
 | Campo | Tipo | Descrizione |
 |---|---|---|
 | `id` | `uint8` 1–254 | ID univoco sulla mesh (0 = non assegnato, 255 = broadcast) |
-| `type` | `string` | Tipo funzionale: `STEP`, `GREY_WATER`, `FRESH_WATER`, `THERMO_BUNK`, `THERMO_LOFT`, `KEY_ON`, `CAMERA`, `ROOT`, `HMI` |
+| `type` | `string` | Tipo funzionale: `ROOT`, `STEP`, `GREY_WATER`, `FRESH_WATER`, `FRONT_DOOR`, `THERMO_BUNK`, `THERMO_LOFT`, `THERMO_KITCHEN`, `REAR_CAM`, `CAM_EXT`, `HMI` |
 | `label` | `string` max 32 | Nome leggibile mostrato sull'HMI in caso di fallback |
 | `hw_revision` | `string` | Revisione PCB — per diagnostica |
 | `fw_min_version` | `string` semver | Il firmware si rifiuta di avviarsi se la propria versione è inferiore |
@@ -367,7 +367,7 @@ di ridefinirlo senza ricompilare — utile per customizzazione sul campo.
 {
   "version": 1,
   "node": {
-    "id": 3,
+    "id": 2,
     "type": "STEP",
     "label": "Gradino accesso",
     "hw_revision": "3.0",
@@ -479,7 +479,7 @@ di ridefinirlo senza ricompilare — utile per customizzazione sul campo.
 {
   "version": 1,
   "node": {
-    "id": 4,
+    "id": 3,
     "type": "GREY_WATER",
     "label": "Valvola scarico acque grigie",
     "hw_revision": "3.0",
@@ -503,21 +503,67 @@ di ridefinirlo senza ricompilare — utile per customizzazione sul campo.
     "hb2":  { "role": "unused" },
     "rel1": { "role": "camera" },
     "rel2": { "role": "unused" },
-    "opt1": { "role": "unused", "gpio": 3 },
-    "opt2": { "role": "unused", "gpio": 4 },
+    "opt1": { "role": "fc_closed", "gpio": 3, "hb_id": "hb1" },
+    "opt2": { "role": "fc_open",   "gpio": 4, "hb_id": "hb1" },
+    "adc1": { "role": "vbat_service", "gpio": 1 },
+    "adc2": { "role": "unused", "gpio": 2 },
+    "i2c":  { "gpio_sda": 8, "gpio_scl": 9, "freq_hz": 400000, "devices": [] },
+    "onewire": { "gpio": 10, "devices": [] }
+  },
+  "behavior": {
+    "motor_run_ms": 5000,
+    "motor_timeout_ms": 8000,
+    "heartbeat_interval_s": 5,
+    "adc_read_interval_s": 60,
+    "battery_alert_threshold_v": 11.8
+  }
+}
+```
+
+---
+
+### FRONT_DOOR — Porta ingresso motorizzata
+
+```json
+{
+  "version": 1,
+  "node": {
+    "id": 9,
+    "type": "FRONT_DOOR",
+    "label": "Porta ingresso",
+    "hw_revision": "3.0",
+    "fw_min_version": "3.0.0"
+  },
+  "mesh": {
+    "mesh_id": [119, 119, 119, 119, 119, 119],
+    "channel": 6,
+    "password": "domoc_mesh_2024",
+    "max_layer": 4,
+    "root_id": 1,
+    "tx_power_dbm": 10
+  },
+  "hardware": {
+    "hb1": {
+      "role": "motor",
+      "gpio_dir_a": 11, "gpio_dir_b": 12, "gpio_enable": 13,
+      "motor_run_ms": 6000,
+      "opt_fc_closed": "opt1", "opt_fc_open": "opt2"
+    },
+    "hb2":  { "role": "unused" },
+    "rel1": { "role": "unused" },
+    "rel2": { "role": "unused" },
+    "opt1": { "role": "fc_closed", "gpio": 3, "hb_id": "hb1" },
+    "opt2": { "role": "fc_open",   "gpio": 4, "hb_id": "hb1" },
     "adc1": { "role": "unused", "gpio": 1 },
     "adc2": { "role": "unused", "gpio": 2 },
     "i2c":  { "gpio_sda": 8, "gpio_scl": 9, "freq_hz": 400000, "devices": [] },
-    "onewire": {
-      "gpio": 10,
-      "devices": [
-        { "address": "28BB220F00000000", "role": "temp_ambient" }
-      ]
-    }
+    "onewire": { "gpio": 10, "devices": [] }
   },
   "behavior": {
-    "motor_run_ms": 3000,
-    "motor_timeout_ms": 8000,
+    "motor_run_ms": 6000,
+    "motor_timeout_ms": 10000,
+    "debounce_fc_ms": 50,
+    "standalone_timeout_s": 30,
     "heartbeat_interval_s": 5
   }
 }

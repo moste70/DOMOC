@@ -1,4 +1,12 @@
-# DomoC — Nodo GARAGE (Valvola acque grigie, monitoraggio batteria, luci garage)
+# DomoC — Nodo GARAGE ⚠ Documento legacy
+
+> **NOTA**: Il nodo "GARAGE" appartiene a una versione precedente del progetto e **non è presente nella tabella ufficiale dei nodi** (`CLAUDE.md`).
+>
+> Le funzionalità qui descritte sono state redistribuite tra due nodi nella specifica corrente:
+> - **Valvola acque grigie + monitoraggio batteria di servizio + telecamera portellone** → `Document/nodes/grey_water.md` (nodo `GREY_WATER`, ID `0x0003`)
+> - **Porta motorizzata + finecorsa** → `Document/nodes/front_door.md` (nodo `FRONT_DOOR`, ID `0x0009`)
+>
+> Questo file è conservato come riferimento storico per le funzioni di luci garage e sensore portellone che potrebbero essere integrate in GREY_WATER o FRONT_DOOR nella fase di implementazione. **Non usare come riferimento primario per lo sviluppo firmware.**
 
 ---
 
