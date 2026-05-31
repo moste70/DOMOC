@@ -7,6 +7,16 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Verify project structure
+        run: |
+          echo "=== Repository structure ==="
+          ls -la Code/nodes/step/
+          echo ""
+          echo "=== Base component ==="
+          ls -la Code/Base/
+          echo ""
+          echo "=== STEP main ==="
+          ls -la Code/nodes/step/main/
       - name: Build STEP node
         uses: espressif/esp-idf-ci-action@v1
         with:
