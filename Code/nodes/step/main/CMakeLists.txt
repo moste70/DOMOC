@@ -1,13 +1,6 @@
 idf_component_register(
     SRCS
-        "main.cpp"
-        "step_node.cpp"
+        "minimal.cpp"
     INCLUDE_DIRS
         "."
-    REQUIRES
-        domoc_base
-        driver
-        app_update
-        spiffs
-        esp_timer
 )
