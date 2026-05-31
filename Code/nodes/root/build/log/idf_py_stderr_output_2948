@@ -1,0 +1,15 @@
+Command: ninja all
+Loading defaults file C:/Source/VEV/DOMOC/Code/nodes/root/sdkconfig.defaults...
+info: C:\Users\moste\AppData\Local\Temp\kconfgen_tmpub7gop5n:10 CONFIG_ESP_TASK_WDT was replaced with CONFIG_ESP_TASK_WDT_INIT
+info: C:\Users\moste\AppData\Local\Temp\kconfgen_tmpub7gop5n:27 CONFIG_ESP32_WIFI_STATIC_RX_BUFFER_NUM was replaced with CONFIG_ESP_WIFI_STATIC_RX_BUFFER_NUM
+info: C:\Users\moste\AppData\Local\Temp\kconfgen_tmpub7gop5n:28 CONFIG_ESP32_WIFI_DYNAMIC_RX_BUFFER_NUM was replaced with CONFIG_ESP_WIFI_DYNAMIC_RX_BUFFER_NUM
+warning: unknown kconfig symbol 'MESH_AP_AUTHMODE_OPEN' assigned to 'n' in C:/Source/VEV/DOMOC/Code/nodes/root/sdkconfig.defaults
+warning: unknown kconfig symbol 'MESH_ROOT_HEALING_DELAY' assigned to '6000' in C:/Source/VEV/DOMOC/Code/nodes/root/sdkconfig.defaults
+Configuration Report               
++---------------------------------+
+|  Parser Version: 1              |
+|  Verbosity: default             |
+|  Defaults policy: sdkconfig     |
+|  Status: Finished successfully  |
+|                                 |
++---------------------------------+

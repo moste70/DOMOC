@@ -1,0 +1,23 @@
+idf_component_register(
+    SRCS
+        "main.c"
+        "mesh_manager.c"
+        "node_registry.c"
+        "nvs_persist.c"
+        "mesh_rx_task.c"
+        "mesh_tx_task.c"
+        "heartbeat_monitor.c"
+        "ota_distributor.c"
+        "../../../shared/protocol/mesh_protocol.c"
+    INCLUDE_DIRS
+        "."
+        "../../../shared/protocol"
+    REQUIRES
+        esp_wifi
+        nvs_flash
+        esp_netif
+        freertos
+        esp_timer
+        app_update
+        spiffs
+)

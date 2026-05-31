@@ -1,0 +1,31 @@
+Command: cmake -G Ninja -B C:\Source\VEV\DOMOC\Code\nodes\root\build -DPYTHON_DEPS_CHECKED=1 -DPYTHON=C:\Users\moste\.espressif\python_env\idf6.0_py3.13_env\Scripts\python.exe -DESP_PLATFORM=1 -DCCACHE_ENABLE=False C:\Source\VEV\DOMOC\Code\nodes\root
+Loading defaults file C:/Source/VEV/DOMOC/Code/nodes/root/sdkconfig.defaults...
+info: C:\Users\moste\AppData\Local\Temp\kconfgen_tmpuo_y75qc:10 CONFIG_ESP_TASK_WDT was replaced with CONFIG_ESP_TASK_WDT_INIT
+info: C:\Users\moste\AppData\Local\Temp\kconfgen_tmpuo_y75qc:27 CONFIG_ESP32_WIFI_STATIC_RX_BUFFER_NUM was replaced with CONFIG_ESP_WIFI_STATIC_RX_BUFFER_NUM
+info: C:\Users\moste\AppData\Local\Temp\kconfgen_tmpuo_y75qc:28 CONFIG_ESP32_WIFI_DYNAMIC_RX_BUFFER_NUM was replaced with CONFIG_ESP_WIFI_DYNAMIC_RX_BUFFER_NUM
+warning: unknown kconfig symbol 'MESH_AP_AUTHMODE_OPEN' assigned to 'n' in C:/Source/VEV/DOMOC/Code/nodes/root/sdkconfig.defaults
+warning: unknown kconfig symbol 'MESH_ROOT_HEALING_DELAY' assigned to '6000' in C:/Source/VEV/DOMOC/Code/nodes/root/sdkconfig.defaults
+Configuration Report               
++---------------------------------+
+|  Parser Version: 1              |
+|  Verbosity: default             |
+|  Defaults policy: sdkconfig     |
+|  Status: Finished successfully  |
+|                                 |
++---------------------------------+
+Traceback (most recent call last):
+  File "C:\esp\v6.0\esp-idf\components\esp_rom\gen_gdbinit.py", line 72, in <module>
+    gdbinit_lines = generate_gdbinit_rom_add_symbols(target)
+  File "C:\esp\v6.0\esp-idf\components\esp_rom\gen_gdbinit.py", line 31, in generate_gdbinit_rom_add_symbols
+    raise OSError(
+        'ESP_ROM_ELF_DIR environment variable is not defined. Please try to run IDF "install" and "export" scripts.'
+    )
+OSError: ESP_ROM_ELF_DIR environment variable is not defined. Please try to run IDF "install" and "export" scripts.
+CMake Warning at C:/esp/v6.0/esp-idf/tools/cmake/gdbinit.cmake:52 (message):
+  Error while generating esp_rom gdbinit
+Call Stack (most recent call first):
+  C:/esp/v6.0/esp-idf/tools/cmake/project.cmake:357 (__generate_gdbinit)
+  C:/esp/v6.0/esp-idf/tools/cmake/project.cmake:973 (__project_info)
+  CMakeLists.txt:4 (project)
+
+

@@ -1,7 +1,13 @@
 {
   "permissions": {
     "allow": [
-      "WebFetch(domain:www.electronics-lab.com)"
+      "WebFetch(domain:www.electronics-lab.com)",
+      "Bash(where idf.py)",
+      "Read(//c/esp/v6.0/esp-idf/**)",
+      "Bash(python3 /c/esp/v6.0/esp-idf/tools/idf.py --version)",
+      "Read(//c/Espressif/tools/python//**)",
+      "Read(//c/Espressif//**)",
+      "PowerShell($env:IDF_PATH = \"C:\\\\esp\\\\v6.0\\\\esp-idf\"; & \"C:\\\\Espressif\\\\tools\\\\python\\\\v6.0\\\\venv\\\\Scripts\\\\python.exe\" \"C:\\\\esp\\\\v6.0\\\\esp-idf\\\\tools\\\\idf_tools.py\" install-python-env 2>&1 | Select-Object -Last 20)"
     ]
   }
 }
