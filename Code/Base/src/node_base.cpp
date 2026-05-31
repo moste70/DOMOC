@@ -89,7 +89,7 @@ esp_err_t NodeBase::mesh_start(const MeshConfig& cfg) {
 
     wifi_init_config_t wifi_cfg = WIFI_INIT_CONFIG_DEFAULT();
     ESP_ERROR_CHECK(esp_wifi_init(&wifi_cfg));
-    ESP_ERROR_CHECK(esp_wifi_set_storage(WIFI_STORAGE_FLASH));
+    // esp_wifi_set_storage rimosso in IDF 5.1: NVS è lo storage di default.
     ESP_ERROR_CHECK(esp_wifi_start());
 
     // Vincolo energetico (CLAUDE.md): modem sleep + TX power ridotta.
