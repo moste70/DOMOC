@@ -7,6 +7,8 @@
 #include "esp_timer.h"
 #include "esp_wifi.h"
 #include "esp_mesh.h"
+#include "esp_netif.h"
+#include "esp_event.h"
 #include "nvs_flash.h"
 
 #include <cstring>
