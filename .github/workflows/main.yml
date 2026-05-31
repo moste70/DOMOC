@@ -5,21 +5,52 @@ on: [push, pull_request]
 jobs:
   build-step:
     runs-on: ubuntu-latest
+    container:
+      image: espressif/idf:release-v5.2
     steps:
       - uses: actions/checkout@v4
+
       - name: Verify project structure
         run: |
-          echo "=== Repository structure ==="
+          echo "=== Repository root ==="
+          pwd
+          ls -la
+          echo ""
+          echo "=== Code/nodes/step ==="
           ls -la Code/nodes/step/
           echo ""
-          echo "=== Base component ==="
+          echo "=== Code/Base ==="
           ls -la Code/Base/
           echo ""
-          echo "=== STEP main ==="
-          ls -la Code/nodes/step/main/
-      - name: Build STEP node
-        uses: espressif/esp-idf-ci-action@v1
-        with:
-          esp_idf_version: release-v5.2
-          target: esp32s3
-          path: 'Code/nodes/step'
+          echo "=== Python and idf.py ==="
+          which python3
+          which idf.py || echo "idf.py not in PATH"
+          python3 --version
+
+      - name: Configure and build with detailed output
+        run: |
+          cd Code/nodes/step
+          echo "Current directory: $(pwd)"
+          echo ""
+          echo "=== IDF variables ==="
+          echo "IDF_PATH: ${IDF_PATH}"
+          echo "IDF_TARGET: ${IDF_TARGET}"
+          echo ""
+          echo "=== CMAKE_MESSAGE_LOG_LEVEL ==="
+          export CMAKE_MESSAGE_LOG_LEVEL=VERBOSE
+          echo ""
+          echo "=== idf.py fullclean ==="
+          python3 ${IDF_PATH}/tools/idf.py fullclean || true
+          echo ""
+          echo "=== idf.py build ==="
+          python3 ${IDF_PATH}/tools/idf.py set-target esp32s3
+          python3 ${IDF_PATH}/tools/idf.py build -v 2>&1 || {
+            echo "Build failed with exit code $?"
+            echo ""
+            echo "=== Checking build directory ==="
+            ls -la build/ 2>/dev/null || echo "No build directory"
+            echo ""
+            echo "=== CMakeCache.txt ==="
+            cat build/CMakeCache.txt 2>/dev/null | head -50 || echo "No CMakeCache.txt"
+            exit 1
+          }
