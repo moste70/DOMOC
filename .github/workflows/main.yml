@@ -5,12 +5,19 @@ on: [push, pull_request]
 jobs:
   build-step:
     runs-on: ubuntu-latest
+    container:
+      image: espressif/idf:release-v5.2
     steps:
       - uses: actions/checkout@v4
       - name: Build STEP node
-        uses: espressif/esp-idf-ci-action@v1
-        with:
-          esp_idf_version: release-v5.2
-          target: esp32s3
-          path: 'Code/nodes/step'
-          command: 'idf.py set-target esp32s3 && idf.py build'
+        working-directory: Code/nodes/step
+        shell: bash
+        run: |
+          . $IDF_PATH/export.sh 2>/dev/null || true
+          idf.py set-target esp32s3
+          idf.py build 2>&1 | tee /tmp/build.log; exit ${PIPESTATUS[0]}
+      - name: Show build errors on failure
+        if: failure()
+        run: |
+          echo "=== LAST 80 LINES OF BUILD LOG ==="
+          tail -80 /tmp/build.log || echo "No build log found"
