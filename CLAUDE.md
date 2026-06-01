@@ -117,13 +117,16 @@ Architettura dual-MCU:
 
 ## Stack tecnologico
 
-- **Framework**: ESP-IDF 4.x/5.x — non Arduino
-- **Linguaggio**: C++ (ereditarietà `NodeBase`; cJSON per la configurazione JSON)
-- **RTOS**: FreeRTOS (integrato in ESP-IDF)
-- **Mesh**: ESP-Mesh (libreria ufficiale Espressif, sopra Wi-Fi 802.11)
-- **Storage**: NVS (persistenza runtime) + SPIFFS partizione `config` (JSON)
-- **UI (HMI)**: LVGL 8.3+ su driver QSPI ST77916 (display 360×360)
-- **OTA**: dual-bank app0/app1 con rollback automatico entro 60s
+- **Framework**: **Arduino** (ESP32 Arduino Core) — scelta definitiva per semplicità
+- **Linguaggio**: C++ (strutture semplici per nodo; niente ereditarietà profonda)
+- **RTOS**: FreeRTOS sotto Arduino (trasparente — si usa `loop()` e state machine)
+- **Mesh**: **painlessMesh** (sopra Wi-Fi 802.11, auto-organizzante)
+- **Libreria condivisa**: `Code/arduino_lib/domoc/` — protocollo, mesh wrapper, LED, motore
+- **UI (HMI)**: LVGL 8.3+ su driver QSPI ST77916 (display 360×360) — Fase 3
+- **OTA**: `ArduinoOTA` o `Update.h` (integrati nell'ESP32 Arduino Core)
+
+> Il codice ESP-IDF precedente rimane in `Code/nodes/` e `Code/Base/` come riferimento,
+> ma lo sviluppo attivo avviene esclusivamente in `Code/nodes_arduino/`.
 
 ---
 
@@ -258,86 +261,64 @@ Documentazione completa: `Document/comunicazione_nodi.md`
 DOMOC/
 ├── CLAUDE.md               # Questo file
 ├── BOM.md / PART_LIST.md   # Bill of Materials (duplicati in Document/)
-├── Document/
-│   ├── esp32-mesh-architecture.md
-│   ├── comunicazione_nodi.md
-│   ├── messaggi_mesh.md
-│   ├── node_config_file.md
-│   ├── pcb_universale_esp32s3.md
-│   ├── BOM.md
-│   ├── PART_LIST.md
-│   └── nodes/
-│       ├── master.md       # Nodo MASTER/ROOT
-│       ├── hmi.md
-│       ├── step.md
-│       ├── grey_water.md
-│       ├── front_door.md
-│       ├── fresh_water.md
-│       ├── thermo_bunk.md
-│       ├── thermo_kitchen.md
-│       ├── thermo_loft.md
-│       ├── rear_cam.md
-│       ├── cam_ext.md
-│       └── garage.md       # ⚠ Legacy — vedere grey_water.md e front_door.md
+├── Document/               # Documentazione architettura e nodi
 └── Code/
-    ├── Base/               # ✅ Libreria comune C++ (NodeBase, protocollo, descriptor)
-    │   ├── include/
-    │   │   ├── mesh_protocol.hpp
-    │   │   ├── node_descriptor.hpp
-    │   │   └── node_base.hpp
-    │   └── src/
-    │       └── node_base.cpp
-    └── nodes/
-        ├── master/         # Firmware nodo MASTER/ROOT (Fase 2)
-        ├── step/           # Firmware nodo STEP (Fase 1)
-        ├── grey_water/     # Firmware nodo GREY_WATER (Fase 4)
-        ├── fresh_water/    # Firmware nodo FRESH_WATER (Fase 4)
-        ├── hmi/            # Firmware nodo HMI (Fase 3)
-        ├── thermo_bunk/    # Firmware nodo THERMO_BUNK (Fase 5)
-        ├── thermo_loft/    # Firmware nodo THERMO_LOFT (Fase 5)
-        └── front_door/     # Firmware nodo FRONT_DOOR (Fase 8)
+    ├── arduino_lib/
+    │   └── domoc/          # ✅ Libreria condivisa Arduino (installare in ~/Arduino/libraries/)
+    │       ├── library.properties
+    │       ├── domoc_protocol.h    # Protocollo binario: struct packed, enum, CRC8
+    │       ├── domoc_descriptor.h  # NodeDescriptor per auto-descrizione HMI (140 byte)
+    │       ├── DomocMesh.h/cpp     # Wrapper painlessMesh: registrazione, heartbeat, standalone
+    │       ├── DomocLed.h          # Helper WS2812B: stati → colori, lampeggio
+    │       └── DomocMotor.h        # Driver H-bridge relay con sequenza K_ENABLE sicura
+    ├── nodes_arduino/       # ✅ Firmware attivi — sviluppo qui
+    │   ├── README.md
+    │   ├── master/          # ROOT mesh, registry, KEY_ON, forwarding HMI
+    │   ├── step/            # Gradino + SHT31
+    │   ├── grey_water/      # Valvola + telecamera portellone + batteria servizio
+    │   ├── fresh_water/     # Elettrovalvola NC
+    │   ├── front_door/      # Porta motorizzata
+    │   ├── thermo_bunk/     # Termostato letto castello
+    │   ├── thermo_loft/     # Termostato mansarda
+    │   ├── thermo_kitchen/  # Termostato cucina
+    │   ├── hmi/             # HMI stub (LVGL Fase 3)
+    │   ├── rear_cam/        # ESP32-CAM retromarcia — HTTP MJPEG, NO mesh
+    │   └── cam_ext/         # ESP32-CAM esterne — HTTP MJPEG + motion detection
+    ├── nodes/               # ⚠ Legacy ESP-IDF — solo riferimento, non sviluppare qui
+    └── Base/                # ⚠ Legacy ESP-IDF — solo riferimento
 ```
 
-> I firmware in `Code/nodes/` sono placeholder. Vedere `Document/piano_di_sviluppo.md`
-> per la roadmap completa fase per fase.
-> Ogni nodo usa `EXTRA_COMPONENT_DIRS = ../../Base` per ereditare `domoc_base`.
-
-**Struttura firmware nodo funzione (eredita da Code/Base):**
+**Struttura di ogni nodo Arduino:**
 
 ```
-Code/nodes/<nodo>/
-├── CMakeLists.txt          # EXTRA_COMPONENT_DIRS ../../Base
-├── partitions.csv          # dual-bank OTA + config (64KB SPIFFS)
-├── sdkconfig.defaults
-└── main/
-    ├── CMakeLists.txt
-    ├── main.cpp            # app_main: istanzia il nodo, legge node_config.json
-    ├── <nodo>_node.hpp     # class XxxNode : public domoc::NodeBase
-    └── <nodo>_node.cpp
+Code/nodes_arduino/<nodo>/
+├── config.h        # GPIO, timing, costanti specifiche del nodo
+├── <nodo>.ino      # setup(), loop(), macchina a stati, callbacks mesh
+└── [opzionale]     # file .h/.cpp per logica separabile (sensori, registry, ecc.)
 ```
 
 ---
 
 ## Pattern e convenzioni di codice
 
-**Task FreeRTOS per nodo funzione:**
+**Struttura ogni nodo (Arduino):**
 
-| Task | Priorità | Stack | Funzione |
-| --- | --- | --- | --- |
-| `mesh_rx_task` | 5 | 3 KB | Ricezione messaggi, dispatch per `msg_type` |
-| `mesh_tx_task` | 5 | 3 KB | Invio heartbeat e risposte |
-| `function_task` | 4 | 4 KB | Logica principale (sensore/attuatore) |
-| `ota_receiver_task` | 2 | 6 KB | Ricezione e applicazione OTA |
+```
+setup()  →  init periferiche → DomocMesh::begin() → stato iniziale da finecorsa/GPIO
+loop()   →  mesh.update() → check_endstops() → check_timeouts() → led.update()
+```
 
-**Task FreeRTOS per ROOT/MASTER:**
+**DomocMesh gestisce in autonomia:**
+- Registrazione al ROOT (MSG_REGISTER + attesa MSG_REGISTER_ACK)
+- Heartbeat ogni 5s ± jitter (chiama il callback `set_on_heartbeat_due`)
+- Standalone detection (30s senza mesh → chiama `set_on_standalone_enter`)
+- KEY_ON tracking (aggiornato automaticamente da MSG_KEY_ON/OFF)
+- CRC8 e codifica hex per il trasporto su painlessMesh
 
-| Task | Priorità | Stack | Funzione |
-| --- | --- | --- | --- |
-| `mesh_rx_task` | 5 | 4 KB | Ricezione messaggi, dispatch, routing verso nodi |
-| `mesh_tx_task` | 5 | 4 KB | Invio REGISTER_ACK, forwarding HMI, OTA chunks |
-| `heartbeat_monitor_task` | 4 | 2 KB | Rilevamento nodi offline, aggiornamento registry |
-| `nvs_persist_task` | 2 | 2 KB | Scrittura asincrona registry su NVS flash |
-| `ota_distributor_task` | 1 | 8 KB | Distribuzione OTA ai nodi su richiesta HMI |
+**Ogni nodo dichiara:**
+- Un `NodeDescriptor` statico (140 byte) — inviato al ROOT dopo REGISTER_ACK
+- Un payload di stato (`XxxStatus` struct packed) — inviato come heartbeat
+- Una callback `on_message()` per gestire MSG_COMMAND e altri messaggi rilevanti
 
 **Sicurezza attuatori:**
 - Il firmware imposta sempre `K_ENABLE=OFF` prima di cambiare `K_DIR_A/B`

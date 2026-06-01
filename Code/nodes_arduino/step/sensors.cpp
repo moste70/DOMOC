@@ -10,7 +10,7 @@ bool sensors_init() {
     return sht31.begin(0x44);
 }
 
-bool sensors_read(float &temp_c, float &humidity_rh) {
+bool sensors_read(float& temp_c, float& humidity_rh) {
     temp_c      = sht31.readTemperature();
     humidity_rh = sht31.readHumidity();
     return !isnan(temp_c) && !isnan(humidity_rh);
