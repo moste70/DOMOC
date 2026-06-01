@@ -1,11 +1,18 @@
 #pragma once
-// ESP32-CAM (AI Thinker) — fuori dalla mesh, stream MJPEG HTTP diretto
-// Vedere Document/nodes/rear_cam.md
+// ESP32-CAM (AI Thinker) — fuori dalla mesh, server HTTP diretto
+// Vedere Document/nodes/rear.md
 
-#define WIFI_SSID     "DomoC01"      // stessa rete Wi-Fi della mesh
+#define WIFI_SSID     "DomoC01"
 #define WIFI_PASSWORD "domoc2024"
 #define HTTP_PORT     80
 #define STREAM_PATH   "/stream"
+#define STATUS_PATH   "/status"
+
+// GPIO 13 (ADC2_CH4) libero senza SD card — partitore 5:1 per 0–16.5V → 0–3.3V.
+// ADC2 è condiviso col Wi-Fi: la lettura introduce rumore accettabile (±200 mV)
+// per monitoraggio batteria 12V.
+#define ADC_VBAT_PIN    13
+#define ADC_VBAT_RATIO  5.0f   // (R1+R2)/R2 — R1=33kΩ, R2=8.2kΩ
 
 // Camera AI Thinker pinout
 #define CAM_PIN_PWDN    32

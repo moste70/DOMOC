@@ -1,7 +1,7 @@
 // DomoC — Nodo CAM_EXT (Arduino, NO mesh)
 //
 // Telecamere esterne: stream MJPEG HTTP + motion detection frame-differencing.
-// Come REAR_CAM, questo nodo non entra nella mesh.
+// Come REAR, questo nodo non entra nella mesh.
 // Il motion alert viene esposto via HTTP GET /motion (polling dall'HMI).
 //
 // Board: AI Thinker ESP32-CAM
@@ -19,7 +19,7 @@ static uint32_t  last_motion_ms    = 0;
 static uint8_t* prev_frame = nullptr;
 static size_t   prev_len   = 0;
 
-// ── Camera init (identica a REAR_CAM) ────────────────────────────────────────
+// ── Camera init (identica a REAR) ────────────────────────────────────────
 static bool camera_init() {
     camera_config_t cfg{};
     cfg.ledc_channel = LEDC_CHANNEL_0;

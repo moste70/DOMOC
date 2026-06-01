@@ -21,7 +21,7 @@
 | **ESP32-S3** | HMI | 1 | Display touch 3.5-4.3" + batteria LiPo | PSRAM 8MB, USB-C |
 | **Subtotale ESP32-S3** | — | **1** | Interfaccia utente portatile | — |
 | | | | | |
-| **ESP32-CAM** | REAR_CAM | 1 | Telecamera retromarcia stream MJPEG | OV2640 2MP |
+| **ESP32-CAM** | REAR | 1 | Telecamera retromarcia stream MJPEG | OV2640 2MP |
 | **ESP32-CAM** | CAM_EXT | 1 | Telecamere esterne sicurezza (motion detect) | OV2640 2MP |
 | **Subtotale ESP32-CAM** | — | **2** | Video streaming | — |
 

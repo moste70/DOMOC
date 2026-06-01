@@ -13,7 +13,7 @@ Funzioni principali:
 - Snapshot JPEG su richiesta HTTP
 - Controllo accensione/spegnimento stream da HMI tramite mesh
 
-**Differenza con REAR_CAM**: CAM_EXT è orientato alla sorveglianza perimetrale del veicolo parcheggiato, con motion detection attiva. REAR_CAM è ottimizzato per la retromarcia, bassa latenza, stream sempre disponibile durante la guida.
+**Differenza con REAR**: CAM_EXT è orientato alla sorveglianza perimetrale del veicolo parcheggiato, con motion detection attiva. REAR è ottimizzato per la retromarcia, bassa latenza, stream sempre disponibile durante la guida.
 
 ---
 

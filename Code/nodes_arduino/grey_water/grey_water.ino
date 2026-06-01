@@ -1,4 +1,4 @@
-// DomoC — Nodo GREY_WATER (Arduino + painlessMesh)
+﻿// DomoC â€” Nodo GREY_WATER (Arduino + painlessMesh)
 //
 // Controlla la valvola acque grigie (H-bridge relay + finecorsa),
 // la telecamera del portellone (relay REL1) e legge la batteria servizio (ADC).
@@ -74,7 +74,7 @@ static void send_status() {
     s.fc_closed   = !digitalRead(PIN_FC_CLOSED) ? 1 : 0;
     s.fc_open     = !digitalRead(PIN_FC_OPEN)   ? 1 : 0;
     s.cam_on      = cam_on ? 1 : 0;
-    s.error_code  = (valve_state == VALVE_ERROR) ? ERR_TIMEOUT : ERR_NONE;
+    s.error_code  = (valve_state == VALVE_ERROR) ? DOMOC_ERR_TIMEOUT : DOMOC_ERR_NONE;
     s.vbat_service= vbat_svc;
     mesh.send_heartbeat((const uint8_t*)&s, sizeof(s));
 }

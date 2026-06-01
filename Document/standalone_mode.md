@@ -210,7 +210,7 @@ void button_task(void *pvParam) {
 | THERMO_BUNK | Sì | Display locale | Ciclo termostato locale con ultimo setpoint |
 | THERMO_LOFT | Sì | Display locale | Ciclo termostato locale con ultimo setpoint |
 | THERMO_KITCHEN | Sì | Display locale | Ciclo termostato locale con ultimo setpoint |
-| REAR_CAM | Parziale | — | Stream HTTP disponibile; alert motion non inviabili su mesh |
+| REAR | Parziale | — | Stream HTTP disponibile; alert motion non inviabili su mesh |
 | CAM_EXT | Parziale | — | Motion detection locale; eventi loggati su SD se presente |
 | HMI | Sì | Display touch | Visualizza stato cached; comandi bloccati verso nodi offline |
 

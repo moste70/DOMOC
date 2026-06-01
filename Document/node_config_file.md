@@ -75,7 +75,7 @@ Al boot il firmware lo legge, lo valida e popola le strutture C interne.
 | Campo | Tipo | Descrizione |
 |---|---|---|
 | `id` | `uint8` 1–254 | ID univoco sulla mesh (0 = non assegnato, 255 = broadcast) |
-| `type` | `string` | Tipo funzionale: `ROOT`, `STEP`, `GREY_WATER`, `FRESH_WATER`, `FRONT_DOOR`, `THERMO_BUNK`, `THERMO_LOFT`, `THERMO_KITCHEN`, `REAR_CAM`, `CAM_EXT`, `HMI` |
+| `type` | `string` | Tipo funzionale: `ROOT`, `STEP`, `GREY_WATER`, `FRESH_WATER`, `FRONT_DOOR`, `THERMO_BUNK`, `THERMO_LOFT`, `THERMO_KITCHEN`, `REAR`, `CAM_EXT`, `HMI` |
 | `label` | `string` max 32 | Nome leggibile mostrato sull'HMI in caso di fallback |
 | `hw_revision` | `string` | Revisione PCB — per diagnostica |
 | `fw_min_version` | `string` semver | Il firmware si rifiuta di avviarsi se la propria versione è inferiore |

@@ -25,7 +25,7 @@ Il sistema adotta una **separazione netta tra infrastruttura mesh e interfaccia 
 | `0x0005` | **THERMO_BUNK** | Sensore + Attuatore | Termostato letto + comando valvola aria calda |
 | `0x0006` | **THERMO_LOFT** | Sensore + Attuatore | Termostato mansarda + comando valvola aria calda |
 | `0x0007` | **THERMO_KITCHEN** | Sensore + Attuatore | Termostato cucina + comando valvola aria calda |
-| `0x0008` | **REAR_CAM** | Sensore video | Telecamera retromarcia stream MJPEG |
+| `0x0008` | **REAR** | Sensore video | Telecamera retromarcia stream MJPEG |
 | `0x0009` | **FRONT_DOOR** | Attuatore | Porta ingresso motorizzata + finecorsa |
 | `0x000A` | **CAM_EXT** | Sensore video | Telecamere esterne (fronte/lato/retro) + motion detection |
 | `0x000B` | **HMI** | Interfaccia utente | Display touch 3.5-4.3" + batteria LiPo — monitoraggio e controllo manuale |
@@ -34,7 +34,7 @@ Il sistema adotta una **separazione netta tra infrastruttura mesh e interfaccia 
 
 - **Alimentazione**: tutti i nodi sono alimentati a 12V DC dalla batteria del camper (AGM/LiFePO4, capacità tipica 100–200Ah). Il bus 12V viene convertito localmente a 3.3V tramite buck converter ad alta efficienza (es. MP2307, efficienza >90%). **Il consumo energetico è un vincolo critico di progetto**: ogni milliampere risparmiato si traduce in maggiore autonomia. Ogni nodo deve essere progettato con la minima dissipazione possibile, specialmente nelle fasi di idle e standby.
 - **Ambiente**: vibrazioni, umidità, sbalzi termici. Preferire connettori con lock meccanico (es. JST-GH) e conformal coating sulla PCB.
-- **Telecamera retromarcia** (`REAR_CAM`): è un caso speciale. Il video non transita sulla mesh ESP-Mesh (troppa banda). Il nodo ESP32-CAM eroga uno **stream MJPEG via HTTP** su Wi-Fi diretto; il master si connette allo stream solo quando richiesto (es. retromarcia inserita). Il nodo comunica sulla mesh solo per segnalare stato e trigger.
+- **Telecamera retromarcia** (`REAR`): è un caso speciale. Il video non transita sulla mesh ESP-Mesh (troppa banda). Il nodo ESP32-CAM eroga uno **stream MJPEG via HTTP** su Wi-Fi diretto; il master si connette allo stream solo quando richiesto (es. retromarcia inserita). Il nodo comunica sulla mesh solo per segnalare stato e trigger.
 - **Telecamere esterne di sicurezza** (`CAM_EXT`): ogni camera esterna (fronte, lato dx/sx, retro) è un ESP32-CAM indipendente che eroga stream MJPEG HTTP. Un nodo coordinatore `CAM_EXT` gestisce il rilevamento movimento (tramite analisi frame lato firmware) e invia alert sulla mesh al master. Il master può richiedere lo switch tra stream via comando mesh. Considerare alimentazione con cavo dedicato e custodie IP65 per l'esterno.
 - **Sicurezza attuatori**: gradino (`STEP`) e porta (`FRONT_DOOR`) devono implementare un **safe state fisico** (finecorsa hardware) indipendente dal firmware, per evitare danni in caso di blocco software.
 - **ROOT (nodo base/infrastruttura)**: 
@@ -57,7 +57,7 @@ Il sistema adotta una **separazione netta tra infrastruttura mesh e interfaccia 
 | **GREY_WATER** | Light sleep; valvola NC — non consuma se chiusa; monitor batteria ogni 30s (critico) | < 10 mA idle |
 | **FRESH_WATER** | Light sleep; valvola NC — non consuma se chiusa | < 5 mA idle |
 | **THERMO_BUNK/LOFT/KITCHEN** | Light sleep; sensore temperatura ogni 30s; valvola aperta solo se necessario | < 10 mA idle |
-| **REAR_CAM** | Spento di default; attivato solo quando retromarcia inserita | 0 mA spento |
+| **REAR** | Spento di default; attivato solo quando retromarcia inserita | 0 mA spento |
 | **CAM_EXT** | Modalità motion detection a basso consumo; stream attivo solo su richiesta | < 30 mA standby |
 | **FRONT_DOOR** | Light sleep; attuatore alimentato solo durante apertura/chiusura | < 5 mA idle |
 | **KEY_ON** | Interrupt-driven (wakeup da GPIO su fronte di salita/discesa); idle quasi zero | < 1 mA idle |
@@ -87,7 +87,7 @@ Il sistema adotta una **separazione netta tra infrastruttura mesh e interfaccia 
 │                                                          │
 │  [THERMO_BUNK]  [THERMO_LOFT]  [THERMO_KITCHEN]          │
 │                                                          │
-│  [REAR_CAM]  ──── stream MJPEG ──→ [HMI]                 │
+│  [REAR]  ──── stream MJPEG ──→ [HMI]                 │
 │  [CAM_EXT×N] ──── stream MJPEG + alert movimento         │
 │                                                          │
 │  [BATT_ENGINE]  [BATT_SERVICE]  [ENV_EXT]                │
@@ -508,7 +508,7 @@ firmware/
 - **Modem sleep obbligatorio** su tutti i nodi: `esp_wifi_set_ps(WIFI_PS_MIN_MODEM)` — compatibile con ESP-Mesh, riduce consumo Wi-Fi del 30–60%
 - **Potenza TX ridotta**: impostare `esp_wifi_set_max_tx_power(40)` (10 dBm) su tutti i nodi; la distanza inter-nodo nel camper è < 5 metri, 20 dBm è uno spreco
 - **Periferici disabilitati**: ogni nodo disabilita Bluetooth, ADC/DAC, UART non usate al boot
-- **Telecamere spente di default**: `REAR_CAM` si accende solo su segnale retromarcia; `CAM_EXT` entra in modalità motion-only con frame rate ridotto (1 fps per analisi) invece di stream continuo
+- **Telecamere spente di default**: `REAR` si accende solo su segnale retromarcia; `CAM_EXT` entra in modalità motion-only con frame rate ridotto (1 fps per analisi) invece di stream continuo
 - **Elettrovalvole NC (Normally Closed)**: scegliere elettrovalvole normalmente chiuse — consumano corrente solo quando aperte, non quando chiuse (stato normale)
 - **Attuatori con alimentazione commutata**: gradino e porta ricevono 12V solo durante il movimento (relay di potenza comandato dal nodo), non in standby
 - **Monitoraggio batteria**: un nodo dedicato o il master legge continuamente il voltage bus 12V; sotto 11.8V invia alert; sotto 11.5V può attivare una modalità ultra-low-power disabilitando le telecamere

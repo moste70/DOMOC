@@ -23,15 +23,14 @@ correttamente in autonomia.
 | 0x0005 | **THERMO_BUNK** | ESP32-C3 | Termostato letto a castello, valvola aria calda |
 | 0x0006 | **THERMO_LOFT** | ESP32-C3 | Termostato mansarda, valvola aria calda |
 | 0x0007 | **THERMO_KITCHEN** | ESP32-C3 | Termostato cucina, valvola aria calda |
-| 0x0008 | **REAR_CAM** | ESP32-CAM | Telecamera retromarcia stream MJPEG via HTTP (fuori mesh dati video) |
-| 0x0009 | **FRONT_DOOR** | ESP32-S3-MINI-1 | Porta ingresso motorizzata + finecorsa |
+| 0x0008 | **REAR** | ESP32-CAM | Telecamera retromarcia stream MJPEG via HTTP + misura tensione batteria servizio (fuori mesh) |
 | 0x000A | **CAM_EXT** | ESP32-CAM | Telecamere esterne + motion detection, stream MJPEG |
 | 0x000B | **HMI** | ESP32-S3R8 | Controller portatile Waveshare Knob: display touch rotondo 1.8" 360×360, encoder, batteria LiPo 800mAh |
 | 0x000F | — | — | ID riservato HMI |
 
 > Il nodo ROOT è documentato come **MASTER** nei file più recenti (`Document/nodes/master.md`).
 > THERMO_BUNK, THERMO_LOFT, THERMO_KITCHEN e HMI non montano il PCB universale v3.0.
-> REAR_CAM e CAM_EXT trasmettono video via stream HTTP diretto, non tramite la mesh.
+> REAR e CAM_EXT trasmettono video via stream HTTP diretto, non tramite la mesh.
 
 ---
 
@@ -234,7 +233,6 @@ Struttura — esempio nodo STEP:
 | STEP | motor | — | — | — | fc_closed | fc_open | — | — | SHT31 |
 | GREY_WATER | motor | — | camera | — | fc_closed | fc_open | vbat_svc | — | — |
 | FRESH_WATER | — | — | valve_nc | — | — | — | — | — | — |
-| FRONT_DOOR | motor | — | — | — | fc_closed | fc_open | — | — | — |
 
 Documentazione completa: `Document/node_config_file.md`
 
@@ -277,12 +275,11 @@ DOMOC/
     │   ├── step/            # Gradino + SHT31
     │   ├── grey_water/      # Valvola + telecamera portellone + batteria servizio
     │   ├── fresh_water/     # Elettrovalvola NC
-    │   ├── front_door/      # Porta motorizzata
     │   ├── thermo_bunk/     # Termostato letto castello
     │   ├── thermo_loft/     # Termostato mansarda
     │   ├── thermo_kitchen/  # Termostato cucina
     │   ├── hmi/             # HMI stub (LVGL Fase 3)
-    │   ├── rear_cam/        # ESP32-CAM retromarcia — HTTP MJPEG, NO mesh
+    │   ├── rear/            # ESP32-CAM retromarcia + batteria servizio — HTTP, NO mesh
     │   └── cam_ext/         # ESP32-CAM esterne — HTTP MJPEG + motion detection
     ├── nodes/               # ⚠ Legacy ESP-IDF — solo riferimento, non sviluppare qui
     └── Base/                # ⚠ Legacy ESP-IDF — solo riferimento
@@ -370,14 +367,12 @@ loop()   →  mesh.update() → check_endstops() → check_timeouts() → led.up
 | `Document/nodes/hmi.md` | Firmware HMI: Waveshare Knob, LVGL, carosello, dual-MCU |
 | `Document/nodes/step.md` | Firmware STEP: macchina a stati gradino, SHT31 |
 | `Document/nodes/grey_water.md` | Firmware GREY_WATER: valvola, telecamera portellone, batteria servizio |
-| `Document/nodes/front_door.md` | Firmware FRONT_DOOR: porta motorizzata, finecorsa |
 | `Document/nodes/fresh_water.md` | Firmware FRESH_WATER: valvola NC |
 | `Document/nodes/thermo_bunk.md` | Firmware THERMO_BUNK: termostato letto castello |
 | `Document/nodes/thermo_kitchen.md` | Firmware THERMO_KITCHEN: termostato cucina |
 | `Document/nodes/thermo_loft.md` | Firmware THERMO_LOFT: termostato mansarda, telecamere |
-| `Document/nodes/rear_cam.md` | Firmware REAR_CAM: telecamera retromarcia, stream MJPEG HTTP |
+| `Document/nodes/rear.md` | Firmware REAR: telecamera retromarcia, stream MJPEG HTTP, tensione batteria servizio |
 | `Document/nodes/cam_ext.md` | Firmware CAM_EXT: telecamere esterne, motion detection |
-| `Document/nodes/garage.md` | ⚠ Legacy — funzionalità redistribuite in grey_water.md e front_door.md |
 | `Document/ota_process.md` | Processo OTA: flusso completo, payload, rollback automatico |
 | `Document/standalone_mode.md` | Modalità standalone: comportamento senza mesh, scenari failure |
 | `Document/piano_di_sviluppo.md` | Roadmap fase per fase: Base → STEP → MASTER → HMI → valvole → OTA |

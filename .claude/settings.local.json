@@ -7,7 +7,12 @@
       "Bash(python3 /c/esp/v6.0/esp-idf/tools/idf.py --version)",
       "Read(//c/Espressif/tools/python//**)",
       "Read(//c/Espressif//**)",
-      "PowerShell($env:IDF_PATH = \"C:\\\\esp\\\\v6.0\\\\esp-idf\"; & \"C:\\\\Espressif\\\\tools\\\\python\\\\v6.0\\\\venv\\\\Scripts\\\\python.exe\" \"C:\\\\esp\\\\v6.0\\\\esp-idf\\\\tools\\\\idf_tools.py\" install-python-env 2>&1 | Select-Object -Last 20)"
+      "PowerShell($env:IDF_PATH = \"C:\\\\esp\\\\v6.0\\\\esp-idf\"; & \"C:\\\\Espressif\\\\tools\\\\python\\\\v6.0\\\\venv\\\\Scripts\\\\python.exe\" \"C:\\\\esp\\\\v6.0\\\\esp-idf\\\\tools\\\\idf_tools.py\" install-python-env 2>&1 | Select-Object -Last 20)",
+      "PowerShell(\\(Get-Command pio -ErrorAction SilentlyContinue\\).Source; \\(Get-Command platformio -ErrorAction SilentlyContinue\\).Source; Get-ChildItem \"$env:USERPROFILE\\\\.platformio\\\\penv\\\\Scripts\\\\pio.exe\" -ErrorAction SilentlyContinue)",
+      "PowerShell(Set-Location \"c:\\\\Source\\\\VEV\\\\DOMOC\"; & \"$env:USERPROFILE\\\\.platformio\\\\penv\\\\Scripts\\\\pio.exe\" run -e step 2>&1 | Select-Object -First 200)",
+      "PowerShell(Set-Location \"c:\\\\Source\\\\VEV\\\\DOMOC\"; & \"$env:USERPROFILE\\\\.platformio\\\\penv\\\\Scripts\\\\pio.exe\" run -e step 2>&1 | Select-Object -Last 60)",
+      "PowerShell(Rename-Item \"c:\\\\Source\\\\VEV\\\\DOMOC\\\\Code\\\\nodes_arduino\\\\step\\\\step.ino\" \"step.cpp\")",
+      "PowerShell(Set-Location \"c:\\\\Source\\\\VEV\\\\DOMOC\"; & \"$env:USERPROFILE\\\\.platformio\\\\penv\\\\Scripts\\\\pio.exe\" run -e step 2>&1 | Select-Object -Last 40)"
     ]
   }
 }

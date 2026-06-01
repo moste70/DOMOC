@@ -6,6 +6,8 @@
 // Librerie: painlessMesh, FastLED, Adafruit SHT31 + Adafruit BusIO
 // Board: ESP32S3 Dev Module — Partition: Huge APP
 
+// PlatformIO monorepo: Arduino.h non viene aggiunto automaticamente ai file .cpp
+#include <Arduino.h>
 #include <FastLED.h>
 #include "../../arduino_lib/domoc/domoc_protocol.h"
 #include "../../arduino_lib/domoc/domoc_descriptor.h"
@@ -77,7 +79,7 @@ static void send_status() {
     s.state       = (uint8_t)state;
     s.fc_closed   = !digitalRead(PIN_FC_CLOSED) ? 1 : 0;
     s.fc_open     = !digitalRead(PIN_FC_OPEN)   ? 1 : 0;
-    s.error_code  = (state == STATE_ERROR) ? ERR_TIMEOUT : ERR_NONE;
+    s.error_code  = (state == STATE_ERROR) ? DOMOC_ERR_TIMEOUT : DOMOC_ERR_NONE;
     s.last_move_ms= motor.last_move_ms();
     s.temperature = temperature;
     s.humidity    = humidity;

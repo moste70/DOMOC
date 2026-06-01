@@ -24,8 +24,7 @@
 #define NODE_ID_THERMO_BUNK   0x05
 #define NODE_ID_THERMO_LOFT   0x06
 #define NODE_ID_THERMO_KITCHEN 0x07
-#define NODE_ID_REAR_CAM      0x08
-#define NODE_ID_FRONT_DOOR    0x09
+#define NODE_ID_REAR          0x08
 #define NODE_ID_CAM_EXT       0x0A
 #define NODE_ID_HMI           0x0B
 #define NODE_ID_BROADCAST     0xFF
@@ -65,14 +64,15 @@
 #define ACTION_GET_STATUS     0x0F
 
 // ── Codici errore ────────────────────────────────────────────────────────────
-#define ERR_NONE              0x00
-#define ERR_TIMEOUT           0x01
-#define ERR_ENDSTOP           0x02
-#define ERR_OVERCURRENT       0x03
-#define ERR_SENSOR            0x04
-#define ERR_MESH              0x05
-#define ERR_NVS               0x06
-#define ERR_OTA               0x07
+// Prefisso DOMOC_ per evitare collisioni con lwIP err.h (ERR_TIMEOUT, ERR_MEM, ecc.)
+#define DOMOC_ERR_NONE              0x00
+#define DOMOC_ERR_TIMEOUT           0x01
+#define DOMOC_ERR_ENDSTOP           0x02
+#define DOMOC_ERR_OVERCURRENT       0x03
+#define DOMOC_ERR_SENSOR            0x04
+#define DOMOC_ERR_MESH              0x05
+#define DOMOC_ERR_NVS               0x06
+#define DOMOC_ERR_OTA               0x07
 
 // ── Timing ───────────────────────────────────────────────────────────────────
 #define DOMOC_HEARTBEAT_MS         5000

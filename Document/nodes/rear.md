@@ -1,19 +1,21 @@
-# DomoC — Nodo REAR_CAM (Telecamera retromarcia)
+# DomoC — Nodo REAR (Telecamera retromarcia + Batteria servizio)
 
 ---
 
 ## Descrizione
 
-Il nodo `REAR_CAM` (ID: `0x0008`) è la telecamera di retromarcia del camper. Fornisce uno stream video MJPEG via HTTP direttamente all'HMI o a qualsiasi client sulla rete locale. Il video **non transita attraverso la mesh ESP-Mesh** — il canale dati video è completamente separato.
+Il nodo `REAR` (ID: `0x0008`) gestisce la telecamera di retromarcia del camper e misura la tensione della batteria di servizio. Fornisce uno stream video MJPEG e i dati di tensione via HTTP direttamente all'HMI. Il video **non transita attraverso la mesh ESP-Mesh** — il canale dati è completamente separato.
 
 Funzioni principali:
 - Stream video MJPEG in tempo reale via HTTP (porta 80, path `/stream`)
+- Misura tensione batteria servizio via partitore ADC su GPIO 13 (aggiornata ogni 30s)
+- Endpoint `/status` JSON: URL stream + tensione batteria
 - Snapshot JPEG su richiesta HTTP (path `/capture`)
 - Presenza sulla mesh ESP-Mesh per segnalazione stato e ricezione comandi (accensione/spegnimento)
 - Attivazione automatica su `MSG_KEY_ON` (retromarcia — opzionale, configurabile)
 - Bassa latenza: stream diretto HTTP senza intermediari mesh
 
-**Architettura video**: l'HMI si connette direttamente all'IP del nodo REAR_CAM per ricevere il video. La mesh è usata solo per i messaggi di controllo e stato (max 200 byte/msg).
+**Architettura video**: l'HMI si connette direttamente all'IP del nodo REAR per ricevere il video. La mesh è usata solo per i messaggi di controllo e stato (max 200 byte/msg).
 
 ---
 
@@ -142,7 +144,7 @@ typedef struct __attribute__((packed)) {
     uint8_t  _pad;            // offset 3 — allineamento
     uint32_t frame_count;     // offset 4-7 — frame totali dall'accensione
     char     stream_url[32];  // offset 8-39 — URL stream es. "http://192.168.4.2/stream"
-} rear_cam_status_t;          // 40 byte
+} rear_status_t;          // 40 byte
 ```
 
 L'HMI legge `stream_url` dal payload e apre il player video direttamente all'indirizzo indicato.
@@ -152,7 +154,7 @@ L'HMI legge `stream_url` dal payload e apre il player video direttamente all'ind
 ## Descriptor HMI
 
 ```c
-static const node_descriptor_t REAR_CAM_DESCRIPTOR = {
+static const node_descriptor_t REAR_DESCRIPTOR = {
     .node_icon      = ICON_CAMERA_REAR,
     .action_count   = 2,
     .property_count = 2,
@@ -225,4 +227,4 @@ Questa funzione è opzionale: la camera retromarcia è utile anche quando il mot
 
 - ESP32-CAM non ha GPIO extra per interfacce fisiche aggiuntive — se si vuole un LED di stato visibile separato, usare una scheda esterna
 - La qualità Wi-Fi dell'antenna PCB integrata è inferiore ai moduli con antenna esterna — valutare antenna esterna se la distanza dall'HMI è > 5m
-- Lo stream MJPEG richiede che l'HMI e REAR_CAM siano sulla stessa rete Wi-Fi (stesso AP mesh o bridge)
+- Lo stream MJPEG richiede che l'HMI e REAR siano sulla stessa rete Wi-Fi (stesso AP mesh o bridge)

@@ -1,11 +1,11 @@
-// DomoC — Nodo REAR_CAM (Arduino, NO mesh)
+// DomoC — Nodo REAR (Arduino, NO mesh)
 //
-// Telecamera retromarcia: stream MJPEG su HTTP diretto.
-// Questo nodo NON entra nella mesh DomoC — è un semplice server HTTP.
-// L'HMI apre il flusso direttamente via HTTP: http://<ip_rear_cam>/stream
+// - Stream MJPEG telecamera retromarcia via HTTP: http://<ip>/stream
+// - Snapshot JPEG: http://<ip>/snapshot
+// - Stato + tensione batteria servizio: http://<ip>/status  (JSON)
 //
-// Librerie: esp32-camera (inclusa in ESP32 Arduino board package)
 // Board: AI Thinker ESP32-CAM
+// Librerie: esp32-camera (inclusa in ESP32 Arduino board package)
 
 #include <WiFi.h>
 #include <WebServer.h>
@@ -13,8 +13,19 @@
 #include "config.h"
 
 static WebServer server(HTTP_PORT);
+static float    vbat_v    = 0.0f;
+static uint32_t last_vbat = 0;
 
-// ── Inizializzazione camera ───────────────────────────────────────────────────
+// ── ADC batteria ─────────────────────────────────────────────────────────────
+static void read_vbat() {
+    // Media su 8 campioni per ridurre il rumore ADC2/Wi-Fi
+    uint32_t sum = 0;
+    for (int i = 0; i < 8; i++) sum += analogRead(ADC_VBAT_PIN);
+    float adc_mv = (sum / 8.0f) / 4095.0f * 3300.0f;
+    vbat_v = adc_mv / 1000.0f * ADC_VBAT_RATIO;
+}
+
+// ── Camera ───────────────────────────────────────────────────────────────────
 static bool camera_init() {
     camera_config_t cfg{};
     cfg.ledc_channel = LEDC_CHANNEL_0;
@@ -37,13 +48,13 @@ static bool camera_init() {
     cfg.pin_reset    = CAM_PIN_RESET;
     cfg.xclk_freq_hz = 20000000;
     cfg.pixel_format = PIXFORMAT_JPEG;
-    cfg.frame_size   = FRAMESIZE_VGA;  // 640×480
+    cfg.frame_size   = FRAMESIZE_VGA;
     cfg.jpeg_quality = 12;
     cfg.fb_count     = 2;
     return esp_camera_init(&cfg) == ESP_OK;
 }
 
-// ── Handler stream MJPEG ─────────────────────────────────────────────────────
+// ── Handlers HTTP ─────────────────────────────────────────────────────────────
 static void handle_stream() {
     WiFiClient client = server.client();
     client.println("HTTP/1.1 200 OK");
@@ -60,7 +71,6 @@ static void handle_stream() {
         client.write(fb->buf, fb->len);
         client.println();
         esp_camera_fb_return(fb);
-
         delay(33);  // ~30fps
     }
 }
@@ -72,8 +82,17 @@ static void handle_snapshot() {
     esp_camera_fb_return(fb);
 }
 
+static void handle_status() {
+    char buf[128];
+    snprintf(buf, sizeof(buf),
+             "{\"node\":\"REAR\",\"vbat_v\":%.2f,\"stream_url\":\"http://%s%s\"}",
+             vbat_v, WiFi.localIP().toString().c_str(), STREAM_PATH);
+    server.send(200, "application/json", buf);
+}
+
 void setup() {
     Serial.begin(115200);
+    analogSetAttenuation(ADC_11db);  // range 0–3.3V su ADC2
 
     if (!camera_init()) {
         Serial.println("Camera init fallita");
@@ -86,11 +105,20 @@ void setup() {
     Serial.printf("\nIP: %s\n", WiFi.localIP().toString().c_str());
     Serial.printf("Stream: http://%s%s\n", WiFi.localIP().toString().c_str(), STREAM_PATH);
 
+    read_vbat();
+
     server.on(STREAM_PATH,  handle_stream);
     server.on("/snapshot",  handle_snapshot);
+    server.on(STATUS_PATH,  handle_status);
     server.begin();
 }
 
 void loop() {
     server.handleClient();
+
+    // Aggiorna tensione ogni 30s
+    if (millis() - last_vbat >= 30000UL) {
+        read_vbat();
+        last_vbat = millis();
+    }
 }

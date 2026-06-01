@@ -1,6 +1,6 @@
 #pragma once
 // ESP32-CAM — telecamere esterne + motion detection
-// Stessi pin fisici di REAR_CAM (stesso modulo AI Thinker)
+// Stessi pin fisici di REAR (stesso modulo AI Thinker)
 #define WIFI_SSID      "DomoC01"
 #define WIFI_PASSWORD  "domoc2024"
 #define HTTP_PORT      80
@@ -11,7 +11,7 @@
 #define MOTION_THRESHOLD  30    // differenza pixel per considerare movimento
 #define MOTION_COOLDOWN_MS 5000 // intervallo minimo tra alert consecutivi
 
-// Stessa pinout AI Thinker di REAR_CAM
+// Stessa pinout AI Thinker di REAR
 #define CAM_PIN_PWDN    32
 #define CAM_PIN_RESET   -1
 #define CAM_PIN_XCLK    0

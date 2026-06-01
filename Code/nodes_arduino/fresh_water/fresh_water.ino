@@ -1,7 +1,7 @@
-// DomoC — Nodo FRESH_WATER (Arduino + painlessMesh)
+﻿// DomoC â€” Nodo FRESH_WATER (Arduino + painlessMesh)
 //
 // Controlla l'elettrovalvola acque chiare (relay NC su REL1/GPIO17).
-// La valvola è normalmente chiusa: HIGH=aperta, LOW=chiusa.
+// La valvola Ã¨ normalmente chiusa: HIGH=aperta, LOW=chiusa.
 //
 // Librerie: painlessMesh, FastLED
 // Board: ESP32S3 Dev Module
@@ -46,7 +46,7 @@ static void set_valve(bool open) {
 }
 
 static void send_status() {
-    FreshWaterStatus s{ valve_open ? 1u : 0u, ERR_NONE };
+    FreshWaterStatus s{ valve_open ? 1u : 0u, DOMOC_ERR_NONE };
     mesh.send_heartbeat((const uint8_t*)&s, sizeof(s));
 }
 

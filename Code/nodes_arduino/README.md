@@ -14,18 +14,17 @@ nodes_arduino/
 │   ├── domoc_descriptor.h   NodeDescriptor per auto-descrizione HMI
 │   ├── DomocMesh.h/cpp      Wrapper painlessMesh (registrazione, heartbeat, CRC)
 │   ├── DomocLed.h           Helper WS2812B (stati → colori, lampeggio)
-│   └── DomocMotor.h         Driver H-bridge relay (STEP, GREY_WATER, FRONT_DOOR)
+│   └── DomocMotor.h         Driver H-bridge relay (STEP, GREY_WATER)
 │
 ├── master/       ROOT mesh — registry nodi, KEY_ON, forwarding HMI
 ├── step/         Gradino motorizzato + SHT31 (temperatura/umidità esterna)
 ├── grey_water/   Valvola acque grigie + telecamera portellone + batteria servizio
 ├── fresh_water/  Elettrovalvola acque chiare (relay NC)
-├── front_door/   Porta motorizzata + finecorsa
 ├── thermo_bunk/  Termostato letto a castello (DS18B20 + relay valvola aria)
 ├── thermo_loft/  Termostato mansarda (identico a thermo_bunk)
 ├── thermo_kitchen/ Termostato cucina (identico a thermo_bunk)
 ├── hmi/          Controller HMI — stub (LVGL Fase 3)
-├── rear_cam/     Telecamera retromarcia — HTTP MJPEG (NO mesh)
+├── rear/         Telecamera retromarcia + tensione batteria servizio — HTTP (NO mesh)
 └── cam_ext/      Telecamere esterne + motion detection — HTTP MJPEG (NO mesh)
 ```
 
@@ -56,10 +55,10 @@ Installabili via Library Manager o arduino-cli:
 | Nodo | Board | Note |
 |---|---|---|
 | master | ESP32C3 Dev Module | |
-| step, grey_water, fresh_water, front_door | ESP32S3 Dev Module | Partition: Huge APP |
+| step, grey_water, fresh_water | ESP32S3 Dev Module | Partition: Huge APP |
 | thermo_bunk/loft/kitchen | ESP32C3 Dev Module | |
 | hmi | ESP32S3 Dev Module | PSRAM: OPI PSRAM |
-| rear_cam, cam_ext | AI Thinker ESP32-CAM | |
+| rear, cam_ext | AI Thinker ESP32-CAM | |
 
 ## Protocollo mesh
 
