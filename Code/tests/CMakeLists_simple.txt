@@ -1,0 +1,17 @@
+cmake_minimum_required(VERSION 3.16)
+project(domoc_tests_simple)
+
+set(CMAKE_CXX_STANDARD 14)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
+# Simple test executable with no external dependencies
+add_executable(test_simple
+    test_simple.cpp
+)
+
+# Include DomoC headers
+target_include_directories(test_simple PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/../Base/include
+)
+
+# No external libraries needed
