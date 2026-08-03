@@ -1,4 +1,4 @@
-name: DomoC Tests
+name: DomoC CI
 
 on: [push, pull_request]
 
@@ -14,3 +14,38 @@ jobs:
         run: |
           cd Code/tests
           bash run_tests.sh
+
+  build-nodes:
+    name: Build ${{ matrix.env }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        env:
+          - step
+          - master
+          - grey_water
+          - fresh_water
+          - thermo_bunk
+          - thermo_loft
+          - thermo_kitchen
+          - hmi
+          - rear
+          - cam_ext
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Cache PlatformIO
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.platformio
+            ~/.cache/pip
+          key: pio-${{ matrix.env }}-${{ hashFiles('platformio.ini') }}
+          restore-keys: pio-${{ matrix.env }}-
+
+      - name: Install PlatformIO
+        run: pip install platformio
+
+      - name: Build ${{ matrix.env }}
+        run: python3 -m platformio run -e ${{ matrix.env }}
