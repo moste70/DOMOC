@@ -1,11 +1,12 @@
-﻿// DomoC â€” Nodo THERMO_BUNK (Arduino + painlessMesh)
+// DomoC — Nodo THERMO_BUNK (Arduino + painlessMesh)
 //
 // Termostato letto a castello: legge DS18B20, comanda valvola aria calda.
-// Logica ON/OFF con isteresi â€” nessun PID necessario per riscaldamento ad aria.
+// Logica ON/OFF con isteresi — nessun PID necessario per riscaldamento ad aria.
 //
 // Librerie: painlessMesh, FastLED, DallasTemperature + OneWire
 // Board: ESP32-C3 Dev Module
 
+#include <Arduino.h>
 #include <FastLED.h>
 #include <OneWire.h>
 #include <DallasTemperature.h>
@@ -34,8 +35,8 @@ static const NodeDescriptor THERMO_DESC = {
         { ACTION_TEMP_DN, ICON_ACT_TEMP_DN, CTRL_STEPPER, 0, 0, 0, "TEMP-" },
     },
     .properties = {
-        { PROP_TEMPERATURE, 2, PAYLOAD_FLOAT32, WIDGET_THERMOMETER, 50, 400, "Â°C", "%.1f" },
-        { PROP_SETPOINT,    6, PAYLOAD_FLOAT32, WIDGET_VALUE_UNIT,  50, 350, "Â°C", "%.1f" },
+        { PROP_TEMPERATURE, 2, PAYLOAD_FLOAT32, WIDGET_THERMOMETER, 50, 400, "\xC2\xB0""C", "%.1f" },
+        { PROP_SETPOINT,    6, PAYLOAD_FLOAT32, WIDGET_VALUE_UNIT,  50, 350, "\xC2\xB0""C", "%.1f" },
     },
 };
 

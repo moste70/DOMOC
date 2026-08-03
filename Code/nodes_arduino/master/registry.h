@@ -1,5 +1,6 @@
 #pragma once
 #include <Arduino.h>
+#include "config.h"
 #include "../../arduino_lib/domoc/domoc_protocol.h"
 
 struct NodeInfo {

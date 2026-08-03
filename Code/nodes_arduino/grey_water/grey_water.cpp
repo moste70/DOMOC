@@ -1,4 +1,4 @@
-﻿// DomoC â€” Nodo GREY_WATER (Arduino + painlessMesh)
+// DomoC — Nodo GREY_WATER (Arduino + painlessMesh)
 //
 // Controlla la valvola acque grigie (H-bridge relay + finecorsa),
 // la telecamera del portellone (relay REL1) e legge la batteria servizio (ADC).
@@ -6,6 +6,7 @@
 // Librerie: painlessMesh, FastLED
 // Board: ESP32S3 Dev Module
 
+#include <Arduino.h>
 #include <FastLED.h>
 #include "../../arduino_lib/domoc/domoc_protocol.h"
 #include "../../arduino_lib/domoc/domoc_descriptor.h"

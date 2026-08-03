@@ -6,6 +6,7 @@
 // Librerie: painlessMesh, FastLED
 // Board: ESP32-C3 Dev Module
 
+#include <Arduino.h>
 #include <FastLED.h>
 #include "../../arduino_lib/domoc/domoc_protocol.h"
 #include "../../arduino_lib/domoc/domoc_descriptor.h"
@@ -71,12 +72,8 @@ static void on_message(const DomocMsg* msg, size_t payload_len) {
             const RegPayload* reg = (const RegPayload*)msg->payload;
             registry.update_or_add(0 /* mesh id non noto qui */, msg->src_id,
                                    reg->node_type, reg->name);
-            // Invia REGISTER_ACK direttamente al mittente
-            // painlessMesh non espone il from nella callback — usiamo broadcast filtrato
+            // Risponde in broadcast — solo il nodo con src_id corrisponde e lo processa
             RegAckPayload ack{ msg->src_id };
-            mesh.raw().sendBroadcast(""); // trick: invia ack come broadcast diretto
-            // Workaround: il REGISTER viene inviato in broadcast dal nodo,
-            // quindi rispondiamo in broadcast — solo il nodo con src_id lo processa
             mesh.broadcast(MSG_REGISTER_ACK, (const uint8_t*)&ack, sizeof(ack));
 
             // Notifica HMI del nuovo nodo
@@ -88,21 +85,19 @@ static void on_message(const DomocMsg* msg, size_t payload_len) {
             break;
         }
 
-        case MSG_HEARTBEAT:
-            // Aggiorna registry e forwarda all'HMI
-            {
-                NodeInfo* n = registry.find_by_logical(msg->src_id);
-                if (n) n->last_hb_ms = millis();
-            }
+        case MSG_STATUS: {
+            // Aggiorna registry e forwarda all'HMI (MSG_STATUS sostituisce MSG_HEARTBEAT)
+            NodeInfo* n = registry.find_by_logical(msg->src_id);
+            if (n) n->last_hb_ms = millis();
             forward_to_hmi(MSG_STATUS_RESP, msg->payload, payload_len);
             break;
+        }
 
         case MSG_DESCRIPTOR:
             forward_to_hmi(MSG_DESCRIPTOR, msg->payload, payload_len);
             break;
 
         case MSG_DESCRIPTOR_REQ:
-            // L'HMI chiede il descriptor di un nodo — lo forwardiamo al nodo
             {
                 uint8_t target_id = msg->payload[0];
                 NodeInfo* n = registry.find_by_logical(target_id);
@@ -112,7 +107,6 @@ static void on_message(const DomocMsg* msg, size_t payload_len) {
             break;
 
         case MSG_STATUS_REQ:
-            // Dump registry verso HMI — invia tutti i nodi attivi
             for (const auto& n : registry.nodes_) {
                 if (!n.active) continue;
                 NodeEventPayload ev{};
@@ -124,7 +118,6 @@ static void on_message(const DomocMsg* msg, size_t payload_len) {
             break;
 
         case MSG_COMMAND:
-            // Forwarding comando HMI → nodo destinatario
             {
                 NodeInfo* n = registry.find_by_logical(msg->dst_id);
                 if (n) mesh.send_to(n->mesh_node_id, msg->dst_id,
@@ -133,7 +126,6 @@ static void on_message(const DomocMsg* msg, size_t payload_len) {
             break;
 
         default:
-            // Messaggi non gestiti dal ROOT (es. STEP_OPEN) → forward all'HMI
             forward_to_hmi(msg->msg_type, msg->payload, payload_len);
             break;
     }

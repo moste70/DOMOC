@@ -7,6 +7,7 @@
 // Board: AI Thinker ESP32-CAM
 // Librerie: esp32-camera (inclusa in ESP32 Arduino board package)
 
+#include <Arduino.h>
 #include <WiFi.h>
 #include <WebServer.h>
 #include <esp_camera.h>
@@ -92,7 +93,7 @@ static void handle_status() {
 
 void setup() {
     Serial.begin(115200);
-    analogSetAttenuation(ADC_11db);  // range 0–3.3V su ADC2
+    analogSetAttenuation(ADC_11db);  // range 0-3.3V su ADC2
 
     if (!camera_init()) {
         Serial.println("Camera init fallita");
@@ -116,7 +117,6 @@ void setup() {
 void loop() {
     server.handleClient();
 
-    // Aggiorna tensione ogni 30s
     if (millis() - last_vbat >= 30000UL) {
         read_vbat();
         last_vbat = millis();
