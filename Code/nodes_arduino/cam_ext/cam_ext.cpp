@@ -6,6 +6,7 @@
 //
 // Board: AI Thinker ESP32-CAM
 
+#include <Arduino.h>
 #include <WiFi.h>
 #include <WebServer.h>
 #include <esp_camera.h>
@@ -86,15 +87,13 @@ static void handle_stream() {
 }
 
 static void handle_motion() {
-    // Risponde con JSON: {"motion": true/false, "ts": <millis>}
-    // L'HMI fa polling periodico per sapere se c'è movimento
     String json = "{\"motion\":";
     json += motion_detected ? "true" : "false";
     json += ",\"ts\":";
     json += String(last_motion_ms);
     json += "}";
     server.send(200, "application/json", json);
-    motion_detected = false;  // consuma il flag dopo la lettura
+    motion_detected = false;
 }
 
 void setup() {

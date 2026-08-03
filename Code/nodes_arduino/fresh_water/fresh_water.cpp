@@ -1,11 +1,12 @@
-﻿// DomoC â€” Nodo FRESH_WATER (Arduino + painlessMesh)
+// DomoC — Nodo FRESH_WATER (Arduino + painlessMesh)
 //
 // Controlla l'elettrovalvola acque chiare (relay NC su REL1/GPIO17).
-// La valvola Ã¨ normalmente chiusa: HIGH=aperta, LOW=chiusa.
+// La valvola è normalmente chiusa: HIGH=aperta, LOW=chiusa.
 //
 // Librerie: painlessMesh, FastLED
 // Board: ESP32S3 Dev Module
 
+#include <Arduino.h>
 #include <FastLED.h>
 #include "../../arduino_lib/domoc/domoc_protocol.h"
 #include "../../arduino_lib/domoc/domoc_descriptor.h"
